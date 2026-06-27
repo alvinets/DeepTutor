@@ -767,12 +767,12 @@
       <aside class="panel">
         <span class="eyebrow">Level 1 · adaptive tool surface</span>
         <h2>Tools are computed per turn</h2>
-        <p>DeepTutor does not hand the model a static toolbox. The visible surface is assembled from learner choices, context flags, active capability tools, and access grants.</p>
+        <p>The model never receives a static toolbox. Each turn gets a computed surface assembled from choices, context, capability state, and grants.</p>
         <div class="mini-list">
-          <div class="mini-item"><span class="dot"></span><span>User-toggled exploration: brainstorm, web search, paper search, deep reasoning.</span></div>
-          <div class="mini-item"><span class="dot blue"></span><span>Context-mounted skills: retrieval, sources, memory, notebooks, workspace actions, follow-up questions.</span></div>
-          <div class="mini-item"><span class="dot rose"></span><span>Capability-owned tools add a deterministic spine only when that mode is active.</span></div>
-          <div class="mini-item"><span class="dot gold"></span><span>Partner and multi-user grants subtract risky tools before the model ever sees them.</span></div>
+          <div class="mini-item"><span class="dot"></span><span>User toggles expose brainstorming, web and paper search, and deep reasoning.</span></div>
+          <div class="mini-item"><span class="dot blue"></span><span>Context gates mount retrieval, sources, memory, notebooks, skills, workspace actions, and Ask User.</span></div>
+          <div class="mini-item"><span class="dot rose"></span><span>Active capabilities inject their own deterministic control tools.</span></div>
+          <div class="mini-item"><span class="dot gold"></span><span>Partner and multi-user grants remove risky tools before prompting.</span></div>
         </div>
         <div class="chip-cloud">
           <span class="chip">toggleable</span>
@@ -822,12 +822,12 @@
       <aside class="panel">
         <span class="eyebrow">Level 2 · capability ownership</span>
         <h2>Capabilities take over the turn</h2>
-        <p>A capability is a multi-stage tutoring objective. Most reuse the chat loop; specialist pipelines still emit the same result envelope and event stream.</p>
+        <p>A capability is a turn-owning tutoring objective. Most reuse the chat loop; specialist pipelines still emit the same event stream and result shape.</p>
         <div class="mini-list">
-          <div class="mini-item"><span class="dot"></span><span>Chat: exploring and responding through one agent loop.</span></div>
-          <div class="mini-item"><span class="dot blue"></span><span>Deep Solve: committed plan, step completion, bounded replans.</span></div>
-          <div class="mini-item"><span class="dot rose"></span><span>Mastery Path: hard per-type gates plus spaced review.</span></div>
-          <div class="mini-item"><span class="dot gold"></span><span>Research, Question, Visualize, and Animator route complex production tasks.</span></div>
+          <div class="mini-item"><span class="dot"></span><span>Chat and Solve run on the shared agent loop.</span></div>
+          <div class="mini-item"><span class="dot blue"></span><span>Solve commits a plan, closes steps, and caps replans.</span></div>
+          <div class="mini-item"><span class="dot rose"></span><span>Mastery locks advancement to evidence and review.</span></div>
+          <div class="mini-item"><span class="dot gold"></span><span>Research, Question, Visualize, and Animator route staged production flows.</span></div>
         </div>
         <div class="chip-cloud">
           <span class="chip">chat</span>
