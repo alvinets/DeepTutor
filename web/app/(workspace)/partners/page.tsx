@@ -73,15 +73,15 @@ export default function PartnersPage() {
         const conns = await listSubagentConnections();
         const existing = conns.find(
           (c) =>
-            c.agent_kind === "partner" &&
-            c.partner_id === partner.partner_id,
+            c.agent_kind === "partner" && c.partner_id === partner.partner_id,
         );
         let name = existing?.name;
         if (!name) {
           const taken = new Set(conns.map((c) => c.name));
           const base = partner.name?.trim() || partner.partner_id;
           let candidate = base;
-          for (let i = 2; taken.has(candidate); i++) candidate = `${base} (${i})`;
+          for (let i = 2; taken.has(candidate); i++)
+            candidate = `${base} (${i})`;
           name = (
             await connectSubagent({
               name: candidate,
