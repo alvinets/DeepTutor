@@ -349,7 +349,7 @@ deeptutor config show
 <img src="../../assets/figs/web-1.4.6+/partners/02-IM%20config%20for%20each%20partner.png" alt="Конфигурация IM-канала для каждого партнёра" width="900">
 </div>
 
-Слой каналов управляется схемой и может подключаться к IM-платформам, таким как Feishu, Telegram, Slack, Discord, DingTalk, QQ/NapCat, WeCom, WhatsApp, Zulip, Matrix, Mochat и Microsoft Teams, в зависимости от установленных дополнений и настроенных учётных данных. Партнёр также может быть подключён как субагент и использован из обычного хода чата — см. **Мои Агенты** ниже.
+Слой каналов управляется схемой и может подключаться к IM-платформам, таким как Feishu, Telegram, Slack, Discord, DingTalk, QQ/NapCat, WeCom, WhatsApp, Zulip, Mattermost, Matrix, Mochat и Microsoft Teams, в зависимости от установленных дополнений и настроенных учётных данных. Партнёр также может быть подключён как субагент и использован из обычного хода чата — см. **Мои Агенты** ниже.
 
 </details>
 

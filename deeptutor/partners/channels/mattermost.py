@@ -193,9 +193,7 @@ class MattermostChannel(BaseChannel):
             me = resp.json()
             self._bot_user_id = me.get("id")
             self._bot_username = me.get("username") or ""
-            logger.info(
-                "Mattermost bot identity: @{} ({})", self._bot_username, self._bot_user_id
-            )
+            logger.info("Mattermost bot identity: @{} ({})", self._bot_username, self._bot_user_id)
             return bool(self._bot_user_id)
         except Exception as e:
             logger.error("Mattermost: failed to resolve bot identity via /users/me: {}", e)

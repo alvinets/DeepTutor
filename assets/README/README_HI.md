@@ -349,7 +349,7 @@ Partners अपनी soul, model policy, library, memory, और channels व�
 <img src="../../assets/figs/web-1.4.6+/partners/02-IM%20config%20for%20each%20partner.png" alt="प्रत्येक partner के लिए per-partner IM channel configuration" width="900">
 </div>
 
-Channel layer schema-driven है और installed extras और configured credentials के आधार पर Feishu, Telegram, Slack, Discord, DingTalk, QQ/NapCat, WeCom, WhatsApp, Zulip, Matrix, Mochat, और Microsoft Teams जैसे IM platforms से connect हो सकती है। एक partner को subagent के रूप में भी connect किया जा सकता है और normal chat turn से consult किया जा सकता है — नीचे **My Agents** देखें।
+Channel layer schema-driven है और installed extras और configured credentials के आधार पर Feishu, Telegram, Slack, Discord, DingTalk, QQ/NapCat, WeCom, WhatsApp, Zulip, Mattermost, Matrix, Mochat, और Microsoft Teams जैसे IM platforms से connect हो सकती है। एक partner को subagent के रूप में भी connect किया जा सकता है और normal chat turn से consult किया जा सकता है — नीचे **My Agents** देखें।
 
 </details>
 

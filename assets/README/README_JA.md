@@ -349,7 +349,7 @@ Partnersは独自のソウル、モデルポリシー、ライブラリ、メモ
 <img src="../../assets/figs/web-1.4.6+/partners/02-IM%20config%20for%20each%20partner.png" alt="Partner ごとのIMチャンネル設定" width="900">
 </div>
 
-チャンネル層はスキーマ駆動で、インストール済みエクストラと設定された認証情報に応じて、Feishu、Telegram、Slack、Discord、DingTalk、QQ/NapCat、WeCom、WhatsApp、Zulip、Matrix、Mochat、Microsoft Teamsなどのプラットフォームに接続できます。PartnerはサブエージェントとしてMy Agentsに接続でき、通常のチャットターンから相談できます。詳細は以下の**My Agents**を参照してください。
+チャンネル層はスキーマ駆動で、インストール済みエクストラと設定された認証情報に応じて、Feishu、Telegram、Slack、Discord、DingTalk、QQ/NapCat、WeCom、WhatsApp、Zulip、Mattermost、Matrix、Mochat、Microsoft Teamsなどのプラットフォームに接続できます。PartnerはサブエージェントとしてMy Agentsに接続でき、通常のチャットターンから相談できます。詳細は以下の**My Agents**を参照してください。
 
 </details>
 

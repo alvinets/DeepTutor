@@ -349,7 +349,7 @@ Chat هي أيضاً نقطة انطلاق للقدرات الأعمق: **Quiz**
 <img src="../../assets/figs/web-1.4.6+/partners/02-IM%20config%20for%20each%20partner.png" alt="إعداد قناة IM لكل شريك" width="900">
 </div>
 
-طبقة القناة مدفوعة بالمخطط ويمكنها الاتصال بمنصات IM مثل Feishu وTelegram وSlack وDiscord وDingTalk وQQ/NapCat وWeCom وWhatsApp وZulip وMatrix وMochat وMicrosoft Teams بناءً على الإضافات المثبتة والبيانات الاعتمادية المهيأة. يمكن أيضاً توصيل الشريك كوكيل فرعي واستشارته من دور محادثة عادي — راجع **My Agents** أدناه.
+طبقة القناة مدفوعة بالمخطط ويمكنها الاتصال بمنصات IM مثل Feishu وTelegram وSlack وDiscord وDingTalk وQQ/NapCat وWeCom وWhatsApp وZulip وMattermost وMatrix وMochat وMicrosoft Teams بناءً على الإضافات المثبتة والبيانات الاعتمادية المهيأة. يمكن أيضاً توصيل الشريك كوكيل فرعي واستشارته من دور محادثة عادي — راجع **My Agents** أدناه.
 
 </details>
 

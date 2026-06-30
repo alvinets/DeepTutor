@@ -349,7 +349,7 @@ Każdy partner ma `SOUL.md`, wybór modelu, kanały, politykę narzędzi i przyp
 <img src="../../assets/figs/web-1.4.6+/partners/02-IM%20config%20for%20each%20partner.png" alt="Konfiguracja kanału IM per partner" width="900">
 </div>
 
-Warstwa kanałów jest sterowana schematem i może łączyć się z platformami IM takimi jak Feishu, Telegram, Slack, Discord, DingTalk, QQ/NapCat, WeCom, WhatsApp, Zulip, Matrix, Mochat i Microsoft Teams w zależności od zainstalowanych dodatków i skonfigurowanych danych uwierzytelniających. Partner może być również podłączony jako subagent i konsultowany z normalnej tury czatu — patrz **My Agents** poniżej.
+Warstwa kanałów jest sterowana schematem i może łączyć się z platformami IM takimi jak Feishu, Telegram, Slack, Discord, DingTalk, QQ/NapCat, WeCom, WhatsApp, Zulip, Mattermost, Matrix, Mochat i Microsoft Teams w zależności od zainstalowanych dodatków i skonfigurowanych danych uwierzytelniających. Partner może być również podłączony jako subagent i konsultowany z normalnej tury czatu — patrz **My Agents** poniżej.
 
 </details>
 

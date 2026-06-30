@@ -215,9 +215,7 @@ class TestHandlePosted:
 
     async def test_system_message_skipped(self):
         ch = _make_channel()
-        await ch._handle_posted(
-            _event(_post(type="system_join_channel"), channel_type="D")
-        )
+        await ch._handle_posted(_event(_post(type="system_join_channel"), channel_type="D"))
         ch.bus.publish_inbound.assert_not_awaited()
 
     async def test_disallowed_sender_skipped(self):
