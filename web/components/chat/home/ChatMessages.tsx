@@ -51,6 +51,7 @@ import type { StreamEvent } from "@/lib/unified-ws";
 import { hasVisibleMarkdownContent } from "@/lib/markdown-display";
 import type { SelectedBookReference } from "@/lib/book-references";
 import { buildVisiblePath, type SiblingInfo } from "@/lib/message-branches";
+import { shouldSubmitOnEnter } from "@/lib/composer-keyboard";
 import type { SpaceMemoryFile } from "@/lib/space-items";
 import {
   AskUserOptions,
@@ -876,6 +877,7 @@ const UserMessage = memo(function UserMessage({
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(msg.content);
+  const isComposingRef = useRef(false);
   // Connected subagents ride in knowledge_bases (same selection path) but are
   // agents, not KBs — this maps a selected name to its backend kind so the
   // reference chip can badge it with the agent's brand icon.
@@ -1035,7 +1037,20 @@ const UserMessage = memo(function UserMessage({
                 } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
                   submitEdit();
+                } else if (shouldSubmitOnEnter(e, isComposingRef.current)) {
+                  e.preventDefault();
+                  submitEdit();
                 }
+              }}
+              onCompositionStart={() => {
+                isComposingRef.current = true;
+              }}
+              onCompositionEnd={() => {
+                // Some IMEs fire compositionend before the Enter keydown that confirms
+                // a candidate, so keep the guard through the current event turn.
+                setTimeout(() => {
+                  isComposingRef.current = false;
+                }, 0);
               }}
               rows={Math.min(8, Math.max(2, draft.split("\n").length))}
               className="w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-[var(--foreground)] outline-none focus:outline-none"
