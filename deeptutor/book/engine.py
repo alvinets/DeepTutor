@@ -738,15 +738,26 @@ class BookEngine:
         bus = stream or StreamBus()
         bstream = BookStream(bus)
 
-        async with bstream.stage(STAGE_COMPILATION):
-            page = await self.compiler.compile_page(
-                book_id=book_id,
-                chapter=chapter,
-                page=page,
-                stream=bstream,
-                knowledge_bases=book.knowledge_bases,
-                language=book.language,
-            )
+        try:
+            async with bstream.stage(STAGE_COMPILATION):
+                page = await self.compiler.compile_page(
+                    book_id=book_id,
+                    chapter=chapter,
+                    page=page,
+                    stream=bstream,
+                    knowledge_bases=book.knowledge_bases,
+                    language=book.language,
+                )
+        except Exception as exc:
+            # compiler sets page.status = GENERATING before LLM calls; if it
+            # throws, the status is left there permanently.  Reset to ERROR so
+            # the user sees the failure and can force-regenerate.
+            if page.status == PageStatus.GENERATING:
+                page.status = PageStatus.ERROR
+                page.error = f"Compilation failed: {exc}"
+                page.updated_at = time.time()
+                self.storage.save_page(page)
+            raise
 
         # Refresh KB fingerprints once we successfully ship a READY page.
         # We capture them lazily so a brand-new book gets its baseline as
