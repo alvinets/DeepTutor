@@ -850,6 +850,12 @@ class BookEngine:
                     f"background compile failed for page {page_id}: {exc}",
                     op="compile_error",
                 )
+                # Reset page status so it can be retried on next resume.
+                if page is not None and page.status == PageStatus.GENERATING:
+                    page.status = PageStatus.ERROR
+                    page.error = f"Background compile failed: {exc}"
+                    page.updated_at = time.time()
+                    self.storage.save_page(page)
             finally:
                 runtime.queued.discard(page_id)
 
