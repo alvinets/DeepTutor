@@ -123,6 +123,24 @@ def find_content_dir(workdir: Path) -> Path:
     return candidate_dirs[0] if candidate_dirs else workdir
 
 
+def _absolutize_img_paths(blocks: list[dict], content_dir: Path) -> list[dict]:
+    """Anchor relative ``img_path`` entries at ``content_dir``.
+
+    Engines (MinerU especially) emit ``img_path`` values like ``images/x.png``
+    relative to the content-list file. Consumers such as RAG-Anything resolve
+    them against their own working directory instead, so the images are never
+    found (issue #624). The cached JSON stays relative — paths are rewritten
+    only on load, keeping the cache dir relocatable.
+    """
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        img_path = block.get("img_path")
+        if img_path and not Path(img_path).is_absolute():
+            block["img_path"] = str(content_dir / img_path)
+    return blocks
+
+
 def load_ir(workdir: Path) -> tuple[str, Optional[list[dict]], Optional[Path]]:
     """Load ``(markdown, blocks, asset_dir)`` from a parsed/cached dir.
 
@@ -143,7 +161,7 @@ def load_ir(workdir: Path) -> tuple[str, Optional[list[dict]], Optional[Path]]:
         try:
             loaded = json.loads(json_files[0].read_text(encoding="utf-8"))
             if isinstance(loaded, list):
-                blocks = loaded
+                blocks = _absolutize_img_paths(loaded, content_dir)
         except Exception as exc:
             logger.warning("Failed to read content_list %s: %s", json_files[0], exc)
 
