@@ -29,6 +29,11 @@ _NATIVE_TOOL_BLOCKED_BINDINGS: frozenset[str] = frozenset(
     {"anthropic", "claude", "ollama", "lm_studio", "vllm", "llama_cpp"}
 )
 
+# Native provider adapters whose backends speak OpenAI-style function calling
+# end to end (schema serialization + tool-call parsing). Backends validated
+# here get tools attached regardless of the binding blocklist above.
+_NATIVE_TOOL_BACKENDS: frozenset[str] = frozenset({"anthropic", "openai_codex"})
+
 
 @dataclass(frozen=True)
 class LLMClientConfig:
@@ -332,7 +337,7 @@ def can_use_native_tool_calling(*, binding: str, model: str | None) -> bool:
 
     Resolution order:
 
-    1. Anthropic-backed providers always support tool use (native Messages API).
+    1. Native provider adapters backed by Anthropic or OpenAI Codex support tools.
     2. Local OpenAI-compatible servers (Ollama, vLLM, LM Studio, llama.cpp,
        Lemonade, OVMS, …) and anything in ``_NATIVE_TOOL_BLOCKED_BINDINGS`` are
        opted out — tool support there depends on the loaded model and is
@@ -348,7 +353,7 @@ def can_use_native_tool_calling(*, binding: str, model: str | None) -> bool:
        ``_NATIVE_TOOL_BLOCKED_BINDINGS``.
     """
     spec = find_by_name(binding)
-    if spec and spec.backend == "anthropic":
+    if spec and spec.backend in _NATIVE_TOOL_BACKENDS:
         return True
     if binding in _NATIVE_TOOL_BLOCKED_BINDINGS or (spec and spec.is_local):
         return False
