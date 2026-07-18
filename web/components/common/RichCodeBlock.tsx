@@ -83,13 +83,13 @@ export default function RichCodeBlock({
           lineHeight: "1.7",
           overflowX: codeBlockWrapLongLines ? "hidden" : "auto",
           whiteSpace: codeBlockWrapLongLines ? "pre-wrap" : "pre",
-          overflowWrap: codeBlockWrapLongLines ? "break-word" : "normal",
+          wordWrap: codeBlockWrapLongLines ? "break-word" : "normal",
         }}
         codeTagProps={{
           className: "md-code-block__code",
           style: {
             fontFamily: MONOSPACE,
-            ...(codeBlockWrapLongLines ? { overflowWrap: "break-word" } : {}),
+            ...(codeBlockWrapLongLines ? { wordWrap: "break-word" } : {}),
           },
         }}
         showLineNumbers={codeBlockShowLineNumbers}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
 
 import type { CodeBlockThemeId } from "@/components/common/code-block-themes";
@@ -22,6 +23,25 @@ import {
   selectClass,
   selectOptionClass,
 } from "@/components/settings/shared";
+
+const CODE_BLOCK_PREVIEW_SNIPPET = `def fibonacci(n):
+    """Generate the first n Fibonacci numbers."""
+    a, b = 0, 1
+    result = []
+    for _ in range(n):
+        result.append(a)
+        a, b = b, a + b
+    return result
+
+
+# Print the first 10 numbers in the sequence
+print(f"fibonacci(10) = {fibonacci(10)}")
+`;
+
+const RichCodeBlockPreview = dynamic(
+  () => import("@/components/common/RichCodeBlock"),
+  { ssr: false },
+);
 
 export default function AppearanceSettingsPage() {
   const { t } = useTranslation();
@@ -167,6 +187,16 @@ export default function AppearanceSettingsPage() {
           "Choose how code snippets look across the app. Changes apply immediately to saved and streamed responses.",
         )}
       >
+        <div className="border-t border-[var(--border)]/50 px-1 py-4 first:border-t-0">
+          <div className="text-[13.5px] font-medium text-[var(--foreground)]">
+            {t("Preview")}
+          </div>
+          <p className="mb-3 mt-1 text-[12px] leading-relaxed text-[var(--muted-foreground)]">
+            {t("Updates live as you change the settings below.")}
+          </p>
+          <RichCodeBlockPreview raw={CODE_BLOCK_PREVIEW_SNIPPET} lang="python" />
+        </div>
+
         <SettingRow
           title={t("Syntax theme")}
           description={t(

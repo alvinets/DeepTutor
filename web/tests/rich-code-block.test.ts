@@ -154,15 +154,15 @@ test("rich-code-block: wrap mode breaks long unbroken tokens instead of clipping
   // overflowed with only white-space:pre-wrap on the outer <pre>, because
   // pre-wrap breaks only at whitespace and a long identifier/string/URL has
   // no break opportunity. The renderer must additionally emit
-  // overflow-wrap:break-word so the browser is permitted to split the token
+  // word-wrap:break-word so the browser is permitted to split the token
   // mid-word when it would otherwise overflow. Asserting on BOTH the outer
   // <pre> and the inner <code> because the line layout uses per-line flex
   // rows and inheritance must reach the token spans from both levels.
   const longUnbrokenToken = "a".repeat(200);
   const html = renderCodeBlock(longUnbrokenToken, "javascript");
 
-  assert.match(html, /<pre[^>]*style="[^"]*overflow-wrap:break-word[^"]*"/);
-  assert.match(html, /<code[^>]*style="[^"]*overflow-wrap:break-word[^"]*"/);
+  assert.match(html, /<pre[^>]*style="[^"]*word-wrap:break-word[^"]*"/);
+  assert.match(html, /<code[^>]*style="[^"]*word-wrap:break-word[^"]*"/);
 });
 
 test("rich-code-block: wrap + line-numbers does not let per-line flex wrappers defeat overflow-wrap", () => {
@@ -181,7 +181,7 @@ test("rich-code-block: wrap + line-numbers does not let per-line flex wrappers d
   // size — so a long unbreakable token overflows the line wrapper (F3
   // measured the nested flex line wrapper at clientWidth 536 /
   // scrollWidth 4326 for the short-token case, and 536 / 2319 for the
-  // 240-char unbroken-token case). overflow-wrap:break-word was already
+  // 240-char unbroken-token case). word-wrap:break-word was already
   // correctly set on <pre> and <code> but could not propagate its break
   // behavior into unshrinkable flex items, so the visible result was a
   // horizontal clip. The outer-<pre> and overflow-wrap regressions above
@@ -201,7 +201,7 @@ test("rich-code-block: wrap + line-numbers does not let per-line flex wrappers d
   // No span inside <code> may carry display:flex when wrap is enabled:
   // that style is the proximate cause of the F3 live-browser clip. The
   // per-line wrapper must lay out as a normal block instead so that
-  // overflow-wrap:break-word (inherited from <pre>/<code>) can break
+  // word-wrap:break-word (inherited from <pre>/<code>) can break
   // long unbreakable tokens instead of being defeated by flex items
   // whose min-width:auto refuses to shrink.
   assert.doesNotMatch(
