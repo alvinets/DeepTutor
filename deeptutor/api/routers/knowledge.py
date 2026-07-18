@@ -51,6 +51,7 @@ from deeptutor.multi_user.knowledge_access import (
     list_visible_knowledge_bases as list_visible_kb_access,
 )
 from deeptutor.services.config import PROJECT_ROOT, load_config_with_main
+from deeptutor.services.file_io import atomic_write_json
 from deeptutor.services.rag.factory import (
     DEFAULT_PROVIDER,
     GRAPHRAG_PROVIDER,
@@ -197,20 +198,25 @@ def _build_unique_task_id(task_type: str, task_key_prefix: str) -> str:
 
 
 def _mark_kb_queued_for_processing(
-    manager: KnowledgeBaseManager, kb_name: str, task_id: str, message: str
+    manager: KnowledgeBaseManager,
+    kb_name: str,
+    task_id: str,
+    message: str,
+    *,
+    status: str = "processing",
 ) -> None:
-    """Flip an existing KB to ``processing`` before its background task is dispatched.
+    """Flip an existing KB to a live processing status before its background task is dispatched.
 
     ``run_upload_processing_task`` only writes status once it starts running;
     without this pre-dispatch update the KB keeps reporting ``ready`` between
     the accepted upload/sync response and the task's first progress write.
-    Mirrors the pre-dispatch update ``create_knowledge_base`` and reindex
-    already do. ``stage`` must be a member of the frontend's
-    ``LIVE_PROGRESS_STAGES`` set (web/lib/knowledge-helpers.ts).
+    Mirrors the pre-dispatch update ``create_knowledge_base`` already does.
+    ``stage`` must be a member of the frontend's ``LIVE_PROGRESS_STAGES`` set
+    (web/lib/knowledge-helpers.ts).
     """
     manager.update_kb_status(
         name=kb_name,
-        status="processing",
+        status=status,
         progress={
             "stage": "starting",
             "message": message,
@@ -2310,8 +2316,7 @@ async def run_reindex_task(kb_name: str, base_dir: str, task_id: str, signature_
                 metadata["last_indexed_at"] = completed_at
                 metadata["last_indexed_count"] = len(file_paths)
                 metadata["last_indexed_action"] = "reindex"
-                with open(metadata_file, "w", encoding="utf-8") as handle:
-                    json.dump(metadata, handle, indent=2, ensure_ascii=False)
+                atomic_write_json(metadata_file, metadata)
             except Exception as meta_err:
                 logger.warning(
                     "Failed to update re-index metadata for '%s': %s",
@@ -2432,16 +2437,8 @@ async def reindex_knowledge_base(
         task_id = _build_unique_task_id("kb_reindex", kb_name)
         get_task_stream_manager().ensure_task(task_id)
 
-        manager.update_kb_status(
-            name=kb_name,
-            status="initializing",
-            progress={
-                "stage": "starting",
-                "message": "Queueing re-index...",
-                "percent": 0,
-                "task_id": task_id,
-                "timestamp": datetime.now().isoformat(),
-            },
+        _mark_kb_queued_for_processing(
+            manager, kb_name, task_id, "Queueing re-index...", status="initializing"
         )
 
         background_tasks.add_task(
