@@ -738,15 +738,19 @@ class BookEngine:
         bus = stream or StreamBus()
         bstream = BookStream(bus)
 
-        async with bstream.stage(STAGE_COMPILATION):
-            page = await self.compiler.compile_page(
-                book_id=book_id,
-                chapter=chapter,
-                page=page,
-                stream=bstream,
-                knowledge_bases=book.knowledge_bases,
-                language=book.language,
-            )
+        try:
+            async with bstream.stage(STAGE_COMPILATION):
+                page = await self.compiler.compile_page(
+                    book_id=book_id,
+                    chapter=chapter,
+                    page=page,
+                    stream=bstream,
+                    knowledge_bases=book.knowledge_bases,
+                    language=book.language,
+                )
+        except Exception as exc:
+            self._mark_page_error(page, exc, prefix="Compilation failed")
+            raise
 
         # Refresh KB fingerprints once we successfully ship a READY page.
         # We capture them lazily so a brand-new book gets its baseline as
@@ -796,6 +800,27 @@ class BookEngine:
                 runtime.stream = BookStream(StreamBus())
             return runtime
 
+    def _mark_page_error(self, page: Page | None, exc: Exception, *, prefix: str) -> None:
+        """Flip a page stranded at ``GENERATING`` to ``ERROR``.
+
+        The compiler sets ``page.status = GENERATING`` before running block
+        generators; when one of them throws, nothing resets the status, so
+        without this the page spins forever and is neither retried on resume
+        nor force-regenerable in the UI. Saving is best-effort — this runs
+        inside exception handlers (including the background worker loop,
+        which must survive), so a failing save must not mask the original
+        error or kill the worker.
+        """
+        if page is None or page.status != PageStatus.GENERATING:
+            return
+        page.status = PageStatus.ERROR
+        page.error = f"{prefix}: {exc}"
+        page.updated_at = time.time()
+        try:
+            self.storage.save_page(page)
+        except Exception:
+            logger.warning(f"Failed to persist ERROR status for page {page.id}", exc_info=True)
+
     def _ensure_worker(self, book_id: str) -> None:
         runtime = self._runtimes.get(book_id)
         if runtime is None:
@@ -819,6 +844,11 @@ class BookEngine:
                         return
                 continue
 
+            # Re-bound every iteration: the except handler below reads `page`,
+            # which must be neither unbound (loader raised on the first item —
+            # the UnboundLocalError would kill this worker task) nor stale from
+            # a previous iteration (the wrong page would be flipped to ERROR).
+            page = None
             try:
                 book = self.storage.load_book(book_id)
                 spine = self.storage.load_spine(book_id)
@@ -850,6 +880,8 @@ class BookEngine:
                     f"background compile failed for page {page_id}: {exc}",
                     op="compile_error",
                 )
+                # Reset page status so it can be retried on next resume.
+                self._mark_page_error(page, exc, prefix="Background compile failed")
             finally:
                 runtime.queued.discard(page_id)
 
