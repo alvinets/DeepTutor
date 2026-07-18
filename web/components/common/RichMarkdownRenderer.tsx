@@ -11,6 +11,7 @@ import {
   convertSequenceFenceToMermaid,
   processMarkdownContent,
 } from "@/lib/latex";
+import { findCitationAnchor } from "@/lib/markdown-anchors";
 import {
   citationAnchorIdFor,
   escapeUnknownHtmlTagsForDisplay,
@@ -581,19 +582,7 @@ export default function RichMarkdownRenderer({
         const ids = label.split(/\s*,\s*/);
         const scrollToRef = (event: React.MouseEvent, id?: string) => {
           event.preventDefault();
-          const hashTarget =
-            id && citationAnchorIdFor(id)
-              ? citationAnchorIdFor(id)
-              : href?.startsWith("#")
-                ? safeDecodeURIComponent(href.slice(1))
-                : "references";
-          const target =
-            document.getElementById(hashTarget || "") ??
-            document.getElementById("references");
-          const parentDetails = target?.closest("details");
-          if (parentDetails instanceof HTMLDetailsElement) {
-            parentDetails.open = true;
-          }
+          const target = findCitationAnchor(href, id);
           if (target) scrollAnchorIntoView(target);
         };
         return (

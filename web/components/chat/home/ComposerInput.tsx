@@ -19,6 +19,7 @@ import ChatSpaceMenu, {
 import { agentGlyph } from "@/components/agents/agent-icons";
 import { shouldSubmitOnEnter } from "@/lib/composer-keyboard";
 import { useAutoSizedTextarea } from "@/lib/use-auto-sized-textarea";
+import { useImeComposing } from "@/lib/use-ime-composing";
 
 interface ComposerInputProps {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -178,7 +179,8 @@ export const ComposerInput = memo(
     // letting `memo` on ChatSpaceMenu actually skip re-renders when
     // `showAtPopup` doesn't change.
     const inputRef = useRef("");
-    const isComposingRef = useRef(false);
+    const { isComposingRef, onCompositionStart, onCompositionEnd } =
+      useImeComposing();
     // Helper that always updates state and ref together so they can't drift.
     const setInputBoth = useCallback((value: string) => {
       inputRef.current = value;
@@ -321,20 +323,9 @@ export const ComposerInput = memo(
         agentMentionMode,
         filteredAgents,
         handleSelectAgentMention,
+        isComposingRef,
       ],
     );
-
-    const handleCompositionStart = useCallback(() => {
-      isComposingRef.current = true;
-    }, []);
-
-    const handleCompositionEnd = useCallback(() => {
-      // Some IMEs fire compositionend before the Enter keydown that confirms
-      // a candidate, so keep the guard through the current event turn.
-      setTimeout(() => {
-        isComposingRef.current = false;
-      }, 0);
-    }, []);
 
     const handleSelectSpaceItem = useCallback(
       (
@@ -509,8 +500,8 @@ export const ComposerInput = memo(
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
+          onCompositionStart={onCompositionStart}
+          onCompositionEnd={onCompositionEnd}
           onClick={handleTextareaClick}
           onPaste={onPaste}
           rows={1}

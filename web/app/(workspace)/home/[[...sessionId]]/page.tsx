@@ -1885,7 +1885,12 @@ export default function ChatPage() {
                 data-chat-scroll-root="true"
                 onScroll={handleMessagesScroll}
                 onClick={handleMessagesClick}
-                className={`w-full flex-1 min-h-0 overflow-y-auto [scrollbar-gutter:stable] ${hasMessages ? "pt-6" : "pt-2 pb-6"}`}
+                // `both-edges` reserves the scrollbar gutter on both sides so
+                // the inner mx-auto column centers on the same axis as the
+                // header and composer (siblings outside this scrollport) on
+                // classic-scrollbar platforms; plain `stable` would shift it
+                // ~half a scrollbar-width left of them.
+                className={`w-full flex-1 min-h-0 overflow-y-auto [scrollbar-gutter:stable_both-edges] ${hasMessages ? "pt-6" : "pt-2 pb-6"}`}
                 style={
                   hasMessages
                     ? (() => {
