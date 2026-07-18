@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 
 from deeptutor.core.agentic.client import (
+    _NATIVE_ADAPTER_BUILDERS,
+    _NATIVE_TOOL_BACKENDS,
     LLMClientConfig,
     _ProviderOpenAIAdapter,
     build_completion_kwargs,
@@ -84,6 +86,12 @@ def test_agentic_kwargs_preserve_legacy_shape_without_binding() -> None:
     )
 
     assert kwargs == {"temperature": 0.2, "max_tokens": 256}
+
+
+def test_native_tool_backends_all_have_adapter_builders() -> None:
+    # Every tool-gated backend must be adapter-routed, or tool schemas would be
+    # attached to a plain AsyncOpenAI client speaking a non-OpenAI wire format.
+    assert _NATIVE_TOOL_BACKENDS <= set(_NATIVE_ADAPTER_BUILDERS)
 
 
 def test_build_openai_client_routes_anthropic_backend_through_adapter(monkeypatch) -> None:

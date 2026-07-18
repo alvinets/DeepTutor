@@ -8,6 +8,7 @@ provider gating, Azure detection, SSL bypass, or per-model token caps.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
 import json
 from types import SimpleNamespace
@@ -32,6 +33,10 @@ _NATIVE_TOOL_BLOCKED_BINDINGS: frozenset[str] = frozenset(
 # Native provider adapters whose backends speak OpenAI-style function calling
 # end to end (schema serialization + tool-call parsing). Backends validated
 # here get tools attached regardless of the binding blocklist above.
+# Invariant: must be a subset of _NATIVE_ADAPTER_BUILDERS — every tool-gated
+# backend needs an adapter branch, or tool schemas would be attached to a plain
+# AsyncOpenAI client pointed at a non-OpenAI wire format. github_copilot is
+# adapter-routed but deliberately excluded from this set.
 _NATIVE_TOOL_BACKENDS: frozenset[str] = frozenset({"anthropic", "openai_codex"})
 
 
@@ -76,33 +81,47 @@ def build_openai_client(config: LLMClientConfig) -> Any:
     )
 
 
+def _build_anthropic_adapter(config: LLMClientConfig, spec: Any) -> Any:
+    from deeptutor.services.llm.provider_core import AnthropicProvider
+
+    anthropic_provider = AnthropicProvider(
+        api_key=config.api_key,
+        api_base=config.base_url or spec.default_api_base or None,
+        default_model=config.model or "claude-sonnet-4-20250514",
+        extra_headers=config.extra_headers,
+        supports_prompt_caching=spec.supports_prompt_caching,
+    )
+    return _ProviderOpenAIAdapter(anthropic_provider)
+
+
+def _build_codex_adapter(config: LLMClientConfig, spec: Any) -> Any:
+    from deeptutor.services.llm.provider_core import OpenAICodexProvider
+
+    oauth_provider = OpenAICodexProvider(
+        default_model=config.model or "openai-codex/gpt-5.1-codex",
+    )
+    return _ProviderOpenAIAdapter(oauth_provider)
+
+
+def _build_copilot_adapter(config: LLMClientConfig, spec: Any) -> Any:
+    from deeptutor.services.llm.provider_core import GitHubCopilotProvider
+
+    copilot_provider = GitHubCopilotProvider(
+        default_model=config.model or "github-copilot/gpt-4.1",
+    )
+    return _ProviderOpenAIAdapter(copilot_provider)
+
+
+_NATIVE_ADAPTER_BUILDERS: dict[str, Callable[[LLMClientConfig, Any], Any]] = {
+    "anthropic": _build_anthropic_adapter,
+    "openai_codex": _build_codex_adapter,
+    "github_copilot": _build_copilot_adapter,
+}
+
+
 def _build_native_provider_adapter(config: LLMClientConfig, spec: Any) -> Any | None:
-    if spec.backend == "anthropic":
-        from deeptutor.services.llm.provider_core import AnthropicProvider
-
-        anthropic_provider = AnthropicProvider(
-            api_key=config.api_key,
-            api_base=config.base_url or spec.default_api_base or None,
-            default_model=config.model or "claude-sonnet-4-20250514",
-            extra_headers=config.extra_headers,
-            supports_prompt_caching=spec.supports_prompt_caching,
-        )
-        return _ProviderOpenAIAdapter(anthropic_provider)
-    if spec.backend == "openai_codex":
-        from deeptutor.services.llm.provider_core import OpenAICodexProvider
-
-        oauth_provider = OpenAICodexProvider(
-            default_model=config.model or "openai-codex/gpt-5.1-codex",
-        )
-        return _ProviderOpenAIAdapter(oauth_provider)
-    if spec.backend == "github_copilot":
-        from deeptutor.services.llm.provider_core import GitHubCopilotProvider
-
-        copilot_provider = GitHubCopilotProvider(
-            default_model=config.model or "github-copilot/gpt-4.1",
-        )
-        return _ProviderOpenAIAdapter(copilot_provider)
-    return None
+    builder = _NATIVE_ADAPTER_BUILDERS.get(spec.backend)
+    return builder(config, spec) if builder else None
 
 
 class _ProviderOpenAIAdapter:
