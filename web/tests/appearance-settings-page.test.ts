@@ -71,3 +71,15 @@ test("appearance settings page: exposes every registered code block theme option
   assert.ok(CODE_BLOCK_THEME_OPTIONS.length > 0);
   assert.match(source, /CODE_BLOCK_THEME_OPTIONS\.map/);
 });
+
+test("appearance settings page: preview includes a line long enough to demonstrate wrapping", () => {
+  const source = readAppearancePage();
+  const previewSource =
+    source.match(/const CODE_BLOCK_PREVIEW_SNIPPET = `([\s\S]*?)`;/)?.[1] ?? "";
+
+  assert.ok(previewSource, "The fixed Python preview snippet should exist");
+  assert.ok(
+    previewSource.split("\n").some((line) => line.length >= 120),
+    "The preview needs a 120+ character line so Wrap long lines has a visible effect",
+  );
+});

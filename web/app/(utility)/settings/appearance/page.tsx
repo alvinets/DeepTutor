@@ -34,8 +34,9 @@ const CODE_BLOCK_PREVIEW_SNIPPET = `def fibonacci(n):
     return result
 
 
-# Print the first 10 numbers in the sequence
-print(f"fibonacci(10) = {fibonacci(10)}")
+# Build a deliberately long summary so the wrapping preference is easy to see
+summary = f"First twenty Fibonacci values rendered with the selected syntax theme, line-number setting, and wrapping preference: {', '.join(str(value) for value in fibonacci(20))}"
+print(summary)
 `;
 
 const RichCodeBlockPreview = dynamic(
