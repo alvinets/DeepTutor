@@ -1858,8 +1858,8 @@ export default function ChatPage() {
           </div>
           <div className="flex w-full flex-1 min-h-0 flex-col">
             {sessionLoading ? (
-              <div className="flex w-full flex-1 min-h-0 items-center justify-center px-6">
-                <div className="w-full max-w-[960px]">
+              <div className="flex w-full flex-1 min-h-0 justify-center px-6">
+                <div className="h-full w-full max-w-[960px]">
                   <SessionLoadingView onCancel={cancelSessionLoad} />
                 </div>
               </div>
