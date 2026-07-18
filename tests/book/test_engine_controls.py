@@ -61,6 +61,18 @@ def test_mark_page_error_resets_generating_page() -> None:
     assert storage.saved == [page]
 
 
+def test_mark_page_error_resets_planning_page() -> None:
+    storage = _RecordingStorage()
+    engine = _engine_with_storage(storage)
+    page = Page(status=PageStatus.PLANNING)
+
+    engine._mark_page_error(page, RuntimeError("planner crashed"), prefix="Compilation failed")
+
+    assert page.status == PageStatus.ERROR
+    assert "planner crashed" in page.error
+    assert storage.saved == [page]
+
+
 def test_mark_page_error_ignores_missing_or_settled_pages() -> None:
     storage = _RecordingStorage()
     engine = _engine_with_storage(storage)

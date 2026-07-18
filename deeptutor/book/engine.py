@@ -801,17 +801,18 @@ class BookEngine:
             return runtime
 
     def _mark_page_error(self, page: Page | None, exc: Exception, *, prefix: str) -> None:
-        """Flip a page stranded at ``GENERATING`` to ``ERROR``.
+        """Flip a page stranded in an in-flight state to ``ERROR``.
 
-        The compiler sets ``page.status = GENERATING`` before running block
-        generators; when one of them throws, nothing resets the status, so
-        without this the page spins forever and is neither retried on resume
-        nor force-regenerable in the UI. Saving is best-effort — this runs
+        The compiler persists ``page.status = PLANNING`` before the LLM
+        planning call and ``GENERATING`` before running block generators;
+        when either throws, nothing resets the status, so without this the
+        page spins forever and is neither retried on resume nor
+        force-regenerable in the UI. Saving is best-effort — this runs
         inside exception handlers (including the background worker loop,
         which must survive), so a failing save must not mask the original
         error or kill the worker.
         """
-        if page is None or page.status != PageStatus.GENERATING:
+        if page is None or page.status not in (PageStatus.GENERATING, PageStatus.PLANNING):
             return
         page.status = PageStatus.ERROR
         page.error = f"{prefix}: {exc}"
@@ -875,17 +876,25 @@ class BookEngine:
                     f"Background compilation failed for {book_id}/{page_id}: {exc}",
                     exc_info=True,
                 )
-                self.storage.append_log(
-                    book_id,
-                    f"background compile failed for page {page_id}: {exc}",
-                    op="compile_error",
-                )
                 # Reset page status so it can be retried on next resume.
                 self._mark_page_error(page, exc, prefix="Background compile failed")
+                try:
+                    self.storage.append_log(
+                        book_id,
+                        f"background compile failed for page {page_id}: {exc}",
+                        op="compile_error",
+                    )
+                except Exception:
+                    logger.warning(
+                        f"Failed to append compile-error log for {book_id}", exc_info=True
+                    )
             finally:
                 runtime.queued.discard(page_id)
 
-            await self._maybe_finalize_book(book_id)
+            try:
+                await self._maybe_finalize_book(book_id)
+            except Exception:
+                logger.warning(f"finalize check failed for {book_id}", exc_info=True)
 
     async def _maybe_finalize_book(self, book_id: str) -> None:
         book = self.storage.load_book(book_id)
