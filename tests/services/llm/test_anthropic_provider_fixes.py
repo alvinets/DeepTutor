@@ -89,3 +89,41 @@ def test_cache_control_never_exceeds_four() -> None:
     for n_tools in (0, 1, 5, 12, 15, 25, 40):
         tools = [{"name": f"t{i}", "description": "d", "input_schema": {}} for i in range(n_tools)]
         assert _count_cache_control("system prompt", messages, tools) <= 4, n_tools
+
+
+def _kwargs_with_effort(provider: AnthropicProvider, model: str, effort: str) -> dict[str, Any]:
+    return provider._build_kwargs(
+        messages=[{"role": "user", "content": "hi"}],
+        tools=None,
+        model=model,
+        max_tokens=1024,
+        temperature=0.7,
+        reasoning_effort=effort,
+        tool_choice=None,
+    )
+
+
+def test_effort_based_families_map_real_effort_to_adaptive_thinking() -> None:
+    """Opus 4.7+/Sonnet 5/Fable 5 reject enabled+budget_tokens with a 400 —
+    a configured effort level must become adaptive thinking there."""
+    provider = _provider()
+    for model in ("claude-opus-4-8", "claude-sonnet-5", "claude-opus-4-7", "claude-fable-5"):
+        kwargs = _kwargs_with_effort(provider, model, "high")
+        assert kwargs["thinking"] == {"type": "adaptive"}, model
+        assert "temperature" not in kwargs, model
+        assert kwargs["max_tokens"] == 1024, model  # no budget headroom inflation
+
+
+def test_effort_based_families_omit_thinking_for_off_sentinels() -> None:
+    provider = _provider()
+    kwargs = _kwargs_with_effort(provider, "claude-opus-4-8", "minimal")
+    assert "thinking" not in kwargs
+    assert "temperature" not in kwargs
+
+
+def test_older_models_keep_budget_tokens_thinking() -> None:
+    provider = _provider()
+    kwargs = _kwargs_with_effort(provider, "claude-opus-4-6", "high")
+    assert kwargs["thinking"]["type"] == "enabled"
+    assert kwargs["thinking"]["budget_tokens"] >= 8192
+    assert kwargs["temperature"] == 1.0

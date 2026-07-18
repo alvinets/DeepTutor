@@ -19,17 +19,25 @@ from deeptutor.services.llm.provider_core.base import LLMProvider, LLMResponse, 
 
 _ALNUM = string.ascii_letters + string.digits
 
-# Model families that REJECT the `temperature` parameter with a 400 — the
-# effort-based generation from Opus 4.7 onward. Opus 4.6 and Sonnet 4.6 still
-# ACCEPT temperature; adding them here would silently drop the user's setting.
-# Extend as new families ship (a capability lookup is the longer-term fix).
-_TEMPERATURE_REJECTING_FAMILIES: tuple[str, ...] = (
+# Effort-based model families from Opus 4.7 onward. These REJECT both the
+# `temperature` parameter and `thinking: {type: "enabled", budget_tokens: N}`
+# with a 400 — adaptive is their only thinking on-mode. Opus 4.6 and
+# Sonnet 4.6 still ACCEPT both older forms; adding them here would silently
+# drop the user's settings. Extend as new families ship (a capability lookup
+# is the longer-term fix).
+_EFFORT_BASED_FAMILIES: tuple[str, ...] = (
     "opus-4-7",
     "opus-4-8",
     "sonnet-5",
     "fable-5",
     "mythos-5",
 )
+
+# reasoning_effort values that mean "thinking off" (see services/config
+# reasoning_params). On effort-based families the correct off/default
+# expression is omitting the `thinking` param entirely — explicit
+# `{type: "disabled"}` is itself rejected on Fable 5.
+_THINKING_OFF_EFFORTS: frozenset[str] = frozenset({"none", "minimal", "minimum"})
 
 
 def _gen_tool_id() -> str:
@@ -373,7 +381,7 @@ class AnthropicProvider(LLMProvider):
 
         max_tokens = max(1, max_tokens)
         thinking_enabled = bool(reasoning_effort)
-        omit_temperature = any(family in model_name for family in _TEMPERATURE_REJECTING_FAMILIES)
+        effort_based = any(family in model_name for family in _EFFORT_BASED_FAMILIES)
 
         kwargs: dict[str, Any] = {
             "model": model_name,
@@ -386,16 +394,22 @@ class AnthropicProvider(LLMProvider):
 
         if reasoning_effort == "adaptive":
             kwargs["thinking"] = {"type": "adaptive"}
-            if not omit_temperature:
+            if not effort_based:
                 kwargs["temperature"] = 1.0
+        elif thinking_enabled and effort_based:
+            # These families reject enabled+budget_tokens with a 400 —
+            # adaptive is their only on-mode, so any real effort level maps
+            # to adaptive (no budget headroom needed). Off-sentinels omit
+            # the param entirely.
+            if reasoning_effort.lower() not in _THINKING_OFF_EFFORTS:
+                kwargs["thinking"] = {"type": "adaptive"}
         elif thinking_enabled:
             budget_map = {"low": 1024, "medium": 4096, "high": max(8192, max_tokens)}
             budget = budget_map.get(reasoning_effort.lower(), 4096)
             kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
             kwargs["max_tokens"] = max(max_tokens, budget + 4096)
-            if not omit_temperature:
-                kwargs["temperature"] = 1.0
-        elif not omit_temperature:
+            kwargs["temperature"] = 1.0
+        elif not effort_based:
             kwargs["temperature"] = temperature
 
         if anthropic_tools:
