@@ -37,11 +37,10 @@ def pytest_pyfunc_call(pyfuncitem: pytest.Function):
     if not inspect.iscoroutinefunction(pyfuncitem.obj):
         return None
 
-    funcargs = {
-        name: pyfuncitem.funcargs[name] for name in pyfuncitem._fixtureinfo.argnames
-    }
+    funcargs = {name: pyfuncitem.funcargs[name] for name in pyfuncitem._fixtureinfo.argnames}
     asyncio.run(pyfuncitem.obj(**funcargs))
     return True
+
 
 # ---------------------------------------------------------------------------
 # Multi-user legacy migration guard

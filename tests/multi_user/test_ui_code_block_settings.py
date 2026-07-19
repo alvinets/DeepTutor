@@ -21,9 +21,7 @@ def test_code_block_settings_default_merge_when_interface_json_lacks_keys(
     user_settings.parent.mkdir(parents=True, exist_ok=True)
 
     # Simulate legacy interface.json without the new code block keys
-    user_settings.write_text(
-        json.dumps({"theme": "light", "language": "en"}), encoding="utf-8"
-    )
+    user_settings.write_text(json.dumps({"theme": "light", "language": "en"}), encoding="utf-8")
 
     with as_user("u_alice", role="user"):
         settings = get_ui_settings()
