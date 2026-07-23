@@ -84,9 +84,7 @@ def parse_json_response(
     except (json.JSONDecodeError, TypeError) as parse_error:
         log.debug(f"Direct JSON parse failed: {parse_error}")
 
-    # Strategy 1b: first JSON value via raw_decode. Trailing prose with braces
-    # (common LLM slip) must not fall through to json-repair, which can invent
-    # a wrapping array and corrupt callers that expect a single object.
+    # Prefer raw_decode before repair so trailing brace-prose cannot become a wrapping array.
     if isinstance(extracted_response, str):
         stripped = extracted_response.lstrip()
         for idx, ch in enumerate(stripped):
