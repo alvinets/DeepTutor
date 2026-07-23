@@ -88,6 +88,9 @@ PROVIDER_ALIASES = {
     "github-copilot": "github_copilot",
     "openai-codex": "openai_codex",
     "lm-studio": "lm_studio",
+    "atlas": "atlascloud",
+    "atlas_cloud": "atlascloud",
+    "atlas-cloud": "atlascloud",
 }
 
 
@@ -165,6 +168,16 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         is_gateway=True,
         detect_by_base_keyword="siliconflow",
         default_api_base="https://api.siliconflow.cn/v1",
+    ),
+    ProviderSpec(
+        name="atlascloud",
+        keywords=("atlascloud", "atlas-cloud", "atlas cloud"),
+        env_key="ATLASCLOUD_API_KEY",
+        display_name="Atlas Cloud",
+        backend="openai_compat",
+        is_gateway=True,
+        detect_by_base_keyword="atlascloud",
+        default_api_base="https://api.atlascloud.ai/v1",
     ),
     ProviderSpec(
         name="volcengine",

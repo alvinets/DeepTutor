@@ -433,6 +433,13 @@ def test_embedding_provider_choices_use_full_endpoint_urls() -> None:
     assert "custom_openai_sdk" not in embedding
 
 
+def test_llm_provider_choices_include_atlascloud() -> None:
+    llm = {item["value"]: item for item in settings_router._provider_choices()["llm"]}
+
+    assert llm["atlascloud"]["label"] == "Atlas Cloud"
+    assert llm["atlascloud"]["base_url"] == "https://api.atlascloud.ai/v1"
+
+
 @pytest.mark.asyncio
 async def test_get_llm_options_returns_redacted_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
     catalog = _build_catalog(
