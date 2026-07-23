@@ -255,22 +255,5 @@ export async function getLegacyChatSession(
   return (await res.json()) as LegacyChatSession;
 }
 
-// ── WebSocket helper ─────────────────────────────────────────────────
-
+// Re-exported so callers can keep importing the event type from book-api.
 export type { BookWsEvent } from "@/lib/book-ws-operation";
-
-export function openBookSocket(
-  onEvent: (event: BookWsEvent) => void,
-  onError?: (error: Event) => void,
-): WebSocket {
-  const socket = new WebSocket(wsUrl(`${BASE}/ws`));
-  socket.onmessage = (event) => {
-    try {
-      onEvent(JSON.parse(event.data));
-    } catch {
-      // ignore malformed frames
-    }
-  };
-  if (onError) socket.onerror = onError;
-  return socket;
-}
