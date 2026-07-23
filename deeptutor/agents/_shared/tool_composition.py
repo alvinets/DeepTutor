@@ -125,8 +125,12 @@ def compose_enabled_tools(
 
     ``exclusive=True`` flips that for the *knowledge* category (an active
     :class:`~deeptutor.capabilities.protocol.KnowledgeCapability`): the turn
-    runs only on ``capability_owned`` plus the ``ask_user`` floor — no built-ins,
-    no composer toggles, no conditional mounts. The capability owns the surface.
+    runs on ``capability_owned`` plus the ``ask_user`` floor — no other
+    built-ins, no composer toggles. The one exception is ``rag`` when
+    ``mount_flags.has_kb`` is set: it serves co-selected KBs the capability does
+    not own (e.g. LlamaIndex KBs alongside an Obsidian vault), so it coexists
+    with the owned surface instead of being dropped (issue #650). The capability
+    otherwise owns the surface.
 
     ``builtin_whitelist`` gates the *built-in* auto-mounts (steps 2 and 4 —
     the :data:`AUTO_MOUNTED_TOOLS` members). ``None`` (the product-chat default)
@@ -150,7 +154,17 @@ def compose_enabled_tools(
     """
     if exclusive:
         owned = [str(name) for name in capability_owned if str(name).strip()]
-        return _finalize([*owned, "ask_user"], forced, suppressed)
+        # ``rag`` is the one built-in that coexists with an exclusive knowledge
+        # capability: it serves co-selected KBs the capability's own tools don't
+        # touch (e.g. LlamaIndex KBs alongside an Obsidian vault). The caller
+        # sets ``has_kb`` only for those coexisting KBs, so a pure-capability
+        # turn still mounts nothing but ``owned`` + the ``ask_user`` floor (#650).
+        extra = (
+            ["rag"]
+            if mount_flags.has_kb and (builtin_whitelist is None or "rag" in builtin_whitelist)
+            else []
+        )
+        return _finalize([*owned, *extra, "ask_user"], forced, suppressed)
 
     def _builtin_allowed(name: str) -> bool:
         return builtin_whitelist is None or name in builtin_whitelist

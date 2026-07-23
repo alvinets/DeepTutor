@@ -566,7 +566,10 @@ class AgenticChatPipeline:
             mount_flags=ToolMountFlags(
                 # PageIndex KBs are read via the preloaded MCP tools, not rag —
                 # a conversation with only PageIndex KBs doesn't mount rag at all.
-                has_kb=bool(self._rag_kbs(context)),
+                # Excludes KBs owned by an exclusive capability (an Obsidian vault
+                # is read via its own tools, never rag) so a pure-vault turn still
+                # doesn't mount rag, while co-selected LlamaIndex KBs do (#650).
+                has_kb=bool(self._coexisting_rag_kbs(context)),
                 # read_source is owned by the explore_context pre-pass (it runs
                 # the investigation over attached sources), not the answer loop.
                 # Keep it off the answer surface even when sources are present.
@@ -601,8 +604,9 @@ class AgenticChatPipeline:
     def _exclusive_capability_active(context: UnifiedContext) -> bool:
         """True when a knowledge capability owns the turn (replaces the surface).
 
-        Suppresses rag scaffolding (KB seed / kb note) too — rag isn't mounted,
-        so seeding or advertising it would be wrong.
+        The capability's own tools replace chat's built-ins. rag scaffolding
+        (mount / KB seed / kb note) is still provided for any co-selected KBs the
+        capability does NOT own — see ``_coexisting_rag_kbs`` (issue #650).
         """
         return any_exclusive_capability_active(context)
 
@@ -672,7 +676,7 @@ class AgenticChatPipeline:
         context: UnifiedContext,
     ) -> list[dict[str, Any]]:
         schemas = self.registry.build_openai_schemas(enabled_tools)
-        kb_choices = self._rag_kbs(context)
+        kb_choices = self._coexisting_rag_kbs(context)
         notebook_choices = self._notebook_choices()
         for schema in schemas:
             function = schema.get("function") if isinstance(schema, dict) else None
@@ -1043,9 +1047,12 @@ class AgenticChatPipeline:
         context: UnifiedContext,
         stream: StreamBus,
     ) -> str:
-        if self._exclusive_capability_active(context):
-            return ""
-        kbs = self._selected_kbs(context)
+        # Seed every selected KB except those owned by an exclusive capability
+        # (an Obsidian vault is read agentically via its own tools, not seeded).
+        # Co-selected LlamaIndex KBs are still seeded so their context reaches
+        # the model even when a vault owns the turn (issue #650).
+        owned = self._capability_owned_kbs(context)
+        kbs = [kb for kb in self._selected_kbs(context) if kb not in owned]
         query = (context.user_message or "").strip()
         if not kbs or not query:
             return ""
@@ -1264,6 +1271,31 @@ class AgenticChatPipeline:
         pageindex = getattr(self, "_pageindex_docs", None) or {}
         return [kb for kb in self._selected_kbs(context) if kb not in pageindex]
 
+    def _capability_owned_kbs(self, context: UnifiedContext) -> set[str]:
+        """Selected KBs consumed by an active capability's own tools (not rag).
+
+        An exclusive knowledge capability (Obsidian) reads its vault through its
+        own tools; those KB refs must be excluded from the rag surface. Read via
+        ``getattr`` so plain capabilities without the seam are unaffected.
+        """
+        owned: set[str] = set()
+        for cap in self._active_loop_capabilities(context):
+            hook = getattr(cap, "owned_kbs", None)
+            if callable(hook):
+                owned |= set(hook(context))
+        return owned
+
+    def _coexisting_rag_kbs(self, context: UnifiedContext) -> list[str]:
+        """rag-served KBs that coexist with an exclusive knowledge capability.
+
+        When an Obsidian vault owns the turn, co-selected LlamaIndex KBs would
+        otherwise be silently dropped (issue #650). These stay reachable via
+        rag; vault KBs (which have no rag index) are excluded. Equals
+        ``_rag_kbs`` for a plain chat turn (no capability owns any KB).
+        """
+        owned = self._capability_owned_kbs(context)
+        return [kb for kb in self._rag_kbs(context) if kb not in owned]
+
     @staticmethod
     def _workspace_key(context: UnifiedContext) -> str:
         raw = str(
@@ -1276,12 +1308,14 @@ class AgenticChatPipeline:
         return cleaned.strip("_") or "direct"
 
     def _kb_system_note(self, context: UnifiedContext) -> str:
-        if self._exclusive_capability_active(context):
-            return ""
         if not self._selected_kbs(context):
             return ""
         rag_note = ""
-        rag_kbs = self._rag_kbs(context)
+        # Coexisting rag KBs only: when an Obsidian vault owns the turn, its own
+        # system block covers the vault, and this note tells the model the
+        # co-selected LlamaIndex KBs are reachable via rag (issue #650). A
+        # pure-vault turn yields no coexisting KBs, so the note stays empty.
+        rag_kbs = self._coexisting_rag_kbs(context)
         if rag_kbs:
             joined = ", ".join(rag_kbs)
             rag_note = (
