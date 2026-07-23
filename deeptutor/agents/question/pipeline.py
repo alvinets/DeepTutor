@@ -1299,8 +1299,7 @@ class QuestionPipeline:
         try:
             parsed = json.loads(text)
         except json.JSONDecodeError:
-            # raw_decode stops at the first complete value so trailing prose
-            # that itself contains braces cannot poison the slice.
+            # First JSON object only; trailing brace-prose must not extend the slice.
             start = text.find("{")
             if start == -1:
                 return {}
