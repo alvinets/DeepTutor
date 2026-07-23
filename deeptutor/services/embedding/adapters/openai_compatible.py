@@ -168,6 +168,9 @@ class OpenAICompatibleEmbeddingAdapter(BaseEmbeddingAdapter):
             "input": input_payload,
             "model": model,
         }
+        # `encoding_format` is opt-in: omit it by default (request default is
+        # None) because several OpenAI-compatible gateways (e.g. SiliconFlow)
+        # reject the param with HTTP 400. Only forward an explicit choice.
         if request.encoding_format:
             payload["encoding_format"] = request.encoding_format
 
