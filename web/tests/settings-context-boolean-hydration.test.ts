@@ -68,27 +68,48 @@ test("readStoredCodeBlockWrapLongLines returns false when localStorage is undefi
   );
 });
 
-test("settings-context: code-block boolean switches hydrate after first render", () => {
+test("settings-context: sources code-block switches from the app-shell single source", () => {
   const source = readSettingsContextSource();
 
+  // SettingsContext must not keep its own copy of the switch state — that was
+  // the triple-state that could drift from AppShellContext / RichCodeBlock.
   assert.doesNotMatch(
     source,
-    /useState<\s*UiSettings\["code_block_show_line_numbers"\]\s*>\(\(\) =>\s*readStoredCodeBlockShowLineNumbers\(\)\s*\)/,
-    "Show line numbers must not read localStorage during the first render, or React can keep the server-rendered aria-checked=false DOM after reload.",
+    /const \[codeBlockShowLineNumbers, setCodeBlockShowLineNumbers\] = useState/,
+    "SettingsContext must not hold local code-block switch state; read it from useAppShell().",
   );
   assert.doesNotMatch(
     source,
-    /useState<\s*UiSettings\["code_block_wrap_long_lines"\]\s*>\(\(\) =>\s*readStoredCodeBlockWrapLongLines\(\)\s*\)/,
-    "Wrap long lines must not read localStorage during the first render, or React can keep the server-rendered aria-checked=false DOM after reload.",
+    /const \[codeBlockWrapLongLines, setCodeBlockWrapLongLines\] = useState/,
+    "SettingsContext must not hold local code-block switch state; read it from useAppShell().",
+  );
+
+  // It reads the values (and delegates writes to) the app-shell context.
+  assert.match(
+    source,
+    /codeBlockShowLineNumbers,[\s\S]*codeBlockWrapLongLines,[\s\S]*=\s*useAppShell\(\)/,
+    "SettingsContext should destructure the code-block switch values from useAppShell().",
+  );
+});
+
+test("app-shell-context: hydrates code-block switches after the SSR-safe first render", () => {
+  const appShellPath = path.join(
+    process.cwd(),
+    "context",
+    "AppShellContext.tsx",
+  );
+  const source = fs.readFileSync(appShellPath, "utf8");
+
+  // The single source re-reads localStorage after mount so a persisted `true`
+  // forces a DOM update instead of keeping the server-rendered aria-checked=false.
+  assert.match(
+    source,
+    /setCodeBlockShowLineNumbersState\(\s*readStoredCodeBlockShowLineNumbers\(\)\s*\)/,
+    "AppShellContext should re-read show-line-numbers from localStorage after mount.",
   );
   assert.match(
     source,
-    /setCodeBlockShowLineNumbers\(\s*readStoredCodeBlockShowLineNumbers\(\)\s*\)/,
-    "Show line numbers should re-read localStorage after mount so persisted true forces a DOM update.",
-  );
-  assert.match(
-    source,
-    /setCodeBlockWrapLongLines\(\s*readStoredCodeBlockWrapLongLines\(\)\s*\)/,
-    "Wrap long lines should re-read localStorage after mount so persisted true forces a DOM update.",
+    /setCodeBlockWrapLongLinesState\(\s*readStoredCodeBlockWrapLongLines\(\)\s*\)/,
+    "AppShellContext should re-read wrap-long-lines from localStorage after mount.",
   );
 });

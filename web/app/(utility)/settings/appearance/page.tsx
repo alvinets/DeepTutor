@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslation } from "react-i18next";
 
@@ -9,13 +8,6 @@ import { CODE_BLOCK_THEME_OPTIONS } from "@/components/common/code-block-themes"
 import { Toggle } from "@/components/settings/Toggle";
 import { useSettings } from "@/components/settings/SettingsContext";
 import { ThemePreviewCard } from "@/components/settings/ThemePreviewCard";
-import {
-  CODE_BLOCK_SETTINGS_EVENT,
-  CODE_BLOCK_SHOW_LINE_NUMBERS_STORAGE_KEY,
-  CODE_BLOCK_WRAP_LONG_LINES_STORAGE_KEY,
-  readStoredCodeBlockShowLineNumbers,
-  readStoredCodeBlockWrapLongLines,
-} from "@/context/app-shell-storage";
 import {
   SettingRow,
   SettingSection,
@@ -50,64 +42,23 @@ export default function AppearanceSettingsPage() {
     theme,
     language,
     codeBlockTheme,
+    codeBlockShowLineNumbers,
+    codeBlockWrapLongLines,
     updateTheme,
     updateLanguage,
     updateCodeBlockTheme,
     updateCodeBlockShowLineNumbers,
     updateCodeBlockWrapLongLines,
   } = useSettings();
-  const [showLineNumbersChecked, setShowLineNumbersChecked] = useState(false);
-  const [wrapLongLinesChecked, setWrapLongLinesChecked] = useState(false);
 
-  useEffect(() => {
-    const syncFromStorage = () => {
-      setShowLineNumbersChecked(readStoredCodeBlockShowLineNumbers());
-      setWrapLongLinesChecked(readStoredCodeBlockWrapLongLines());
-    };
-
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === CODE_BLOCK_SHOW_LINE_NUMBERS_STORAGE_KEY) {
-        setShowLineNumbersChecked(readStoredCodeBlockShowLineNumbers());
-      }
-      if (event.key === CODE_BLOCK_WRAP_LONG_LINES_STORAGE_KEY) {
-        setWrapLongLinesChecked(readStoredCodeBlockWrapLongLines());
-      }
-    };
-
-    const onCodeBlockSettings = (event: Event) => {
-      const detail = (
-        event as CustomEvent<{
-          codeBlockShowLineNumbers?: boolean;
-          codeBlockWrapLongLines?: boolean;
-        }>
-      ).detail;
-      if (detail?.codeBlockShowLineNumbers !== undefined) {
-        setShowLineNumbersChecked(Boolean(detail.codeBlockShowLineNumbers));
-      }
-      if (detail?.codeBlockWrapLongLines !== undefined) {
-        setWrapLongLinesChecked(Boolean(detail.codeBlockWrapLongLines));
-      }
-    };
-
-    syncFromStorage();
-    window.addEventListener("storage", onStorage);
-    window.addEventListener(CODE_BLOCK_SETTINGS_EVENT, onCodeBlockSettings);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener(
-        CODE_BLOCK_SETTINGS_EVENT,
-        onCodeBlockSettings,
-      );
-    };
-  }, []);
-
+  // All code-block values come straight from the settings context (backed by
+  // AppShellContext, the single source of truth), so the toggles reflect the
+  // current preference without any local mirror state.
   const handleShowLineNumbersChange = (next: boolean) => {
-    setShowLineNumbersChecked(next);
     void updateCodeBlockShowLineNumbers(next);
   };
 
   const handleWrapLongLinesChange = (next: boolean) => {
-    setWrapLongLinesChecked(next);
     void updateCodeBlockWrapLongLines(next);
   };
 
@@ -239,7 +190,7 @@ export default function AppearanceSettingsPage() {
           )}
           control={
             <Toggle
-              checked={showLineNumbersChecked}
+              checked={codeBlockShowLineNumbers}
               onChange={handleShowLineNumbersChange}
             />
           }
@@ -252,7 +203,7 @@ export default function AppearanceSettingsPage() {
           )}
           control={
             <Toggle
-              checked={wrapLongLinesChecked}
+              checked={codeBlockWrapLongLines}
               onChange={handleWrapLongLinesChange}
             />
           }

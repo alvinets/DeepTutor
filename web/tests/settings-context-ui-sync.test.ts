@@ -270,22 +270,30 @@ test("settings-context: backend values override localStorage values during sync"
   // as it would overwrite the backend-loaded true values with the old false values.
 });
 
-test("settings-context: backend code-block sync updates AppShell state directly", () => {
+test("settings-context: routes code-block state through the AppShell single source", () => {
   const source = readSettingsContextSource();
 
   assert.match(
     source,
     /useAppShell/,
-    "SettingsContext must not rely only on localStorage events; AppShell can miss those during effect ordering on reload.",
+    "SettingsContext should read and write code-block state via AppShellContext.",
+  );
+  // Backend-loaded values reach AppShell through the storage/event sync helper.
+  assert.match(
+    source,
+    /syncLoadedCodeBlockSettingsToAppShell\(\s*payload\.ui,?\s*\)/,
+    "loadSettings should push backend-loaded code-block values into the AppShell source.",
+  );
+  // User edits delegate to the AppShell setters (which normalize, persist to
+  // localStorage, and notify consumers) rather than a local mirror.
+  assert.match(
+    source,
+    /setAppShellCodeBlockShowLineNumbers\(next\)/,
+    "updateCodeBlockShowLineNumbers should delegate to the AppShell setter.",
   );
   assert.match(
     source,
-    /setAppShellCodeBlockShowLineNumbers\(\s*syncedCodeBlockSettings\.code_block_show_line_numbers,?\s*\)/,
-    "Backend-loaded show-line-number values should update AppShell state directly.",
-  );
-  assert.match(
-    source,
-    /setAppShellCodeBlockWrapLongLines\(\s*syncedCodeBlockSettings\.code_block_wrap_long_lines,?\s*\)/,
-    "Backend-loaded wrap-long-lines values should update AppShell state directly.",
+    /setAppShellCodeBlockWrapLongLines\(next\)/,
+    "updateCodeBlockWrapLongLines should delegate to the AppShell setter.",
   );
 });

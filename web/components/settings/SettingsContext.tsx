@@ -15,12 +15,7 @@ import { useTranslation } from "react-i18next";
 
 import type { CodeBlockThemeId } from "@/components/common/code-block-themes";
 import {
-  DEFAULT_CODE_BLOCK_SHOW_LINE_NUMBERS,
-  DEFAULT_CODE_BLOCK_WRAP_LONG_LINES,
   normalizeCodeBlockTheme,
-  readStoredCodeBlockShowLineNumbers,
-  readStoredCodeBlockTheme,
-  readStoredCodeBlockWrapLongLines,
   writeStoredCodeBlockShowLineNumbers,
   writeStoredCodeBlockTheme,
   writeStoredCodeBlockWrapLongLines,
@@ -519,7 +514,13 @@ export function useSettings(): SettingsContextValue {
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
+  // Code-block appearance lives in AppShellContext (the single source of truth,
+  // also consumed by RichCodeBlock). Read the values from there and delegate
+  // writes to its setters; this provider only adds backend persistence on top.
   const {
+    codeBlockTheme,
+    codeBlockShowLineNumbers,
+    codeBlockWrapLongLines,
     setCodeBlockTheme: setAppShellCodeBlockTheme,
     setCodeBlockShowLineNumbers: setAppShellCodeBlockShowLineNumbers,
     setCodeBlockWrapLongLines: setAppShellCodeBlockWrapLongLines,
@@ -528,15 +529,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [theme, setTheme] = useState<UiSettings["theme"]>("snow");
   const [language, setLanguage] = useState<UiSettings["language"]>("en");
-  const [codeBlockTheme, setCodeBlockTheme] = useState<
-    UiSettings["code_block_theme"]
-  >(() => readStoredCodeBlockTheme());
-  const [codeBlockShowLineNumbers, setCodeBlockShowLineNumbers] = useState<
-    UiSettings["code_block_show_line_numbers"]
-  >(DEFAULT_CODE_BLOCK_SHOW_LINE_NUMBERS);
-  const [codeBlockWrapLongLines, setCodeBlockWrapLongLines] = useState<
-    UiSettings["code_block_wrap_long_lines"]
-  >(DEFAULT_CODE_BLOCK_WRAP_LONG_LINES);
   const [catalog, setCatalog] = useState<Catalog>(defaultCatalog());
   const [draft, setDraft] = useState<Catalog>(defaultCatalog());
   const [catalogEditable, setCatalogEditable] = useState<boolean | null>(null);
@@ -623,23 +615,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }
       setTheme(payload.ui.theme);
       setLanguage(payload.ui.language);
-      const syncedCodeBlockSettings = syncLoadedCodeBlockSettingsToAppShell(
-        payload.ui,
-      );
-      setAppShellCodeBlockTheme(syncedCodeBlockSettings.code_block_theme);
-      setAppShellCodeBlockShowLineNumbers(
-        syncedCodeBlockSettings.code_block_show_line_numbers,
-      );
-      setAppShellCodeBlockWrapLongLines(
-        syncedCodeBlockSettings.code_block_wrap_long_lines,
-      );
-      setCodeBlockTheme(syncedCodeBlockSettings.code_block_theme);
-      setCodeBlockShowLineNumbers(
-        syncedCodeBlockSettings.code_block_show_line_numbers,
-      );
-      setCodeBlockWrapLongLines(
-        syncedCodeBlockSettings.code_block_wrap_long_lines,
-      );
+      // Writes the backend-loaded values into app-shell storage and dispatches
+      // the code-block settings event; AppShellContext (the single source) picks
+      // them up, so no separate copy needs seeding here.
+      syncLoadedCodeBlockSettingsToAppShell(payload.ui);
       if (payload.providers) setProviders(payload.providers);
       settingsLoaded = true;
     } catch (err) {
@@ -671,24 +650,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         );
       }
     }
-  }, [
-    setAppShellCodeBlockShowLineNumbers,
-    setAppShellCodeBlockTheme,
-    setAppShellCodeBlockWrapLongLines,
-    t,
-  ]);
+  }, [t]);
 
   // Load settings + status once on mount. Subsequent navigations between
   // settings sub-pages share this state via the layout-level provider.
-  useEffect(() => {
-    // Hydrate client-only switch state after the SSR-safe first render. Reading
-    // localStorage in the initial state can leave React with server-rendered
-    // aria-checked="false" DOM when the persisted client value is already true.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCodeBlockShowLineNumbers(readStoredCodeBlockShowLineNumbers());
-    setCodeBlockWrapLongLines(readStoredCodeBlockWrapLongLines());
-  }, []);
-
+  // Code-block switch hydration lives in AppShellContext (the single source),
+  // so no separate post-mount re-read is needed here.
   useEffect(() => {
     loadSettings();
     return () => {
@@ -726,23 +693,32 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     await persistUiSettingsPatch({ language: next });
   }, []);
 
-  const updateCodeBlockTheme = useCallback(async (next: CodeBlockThemeId) => {
-    setCodeBlockTheme(next);
-    writeStoredCodeBlockTheme(next);
-    await persistUiSettingsPatch({ code_block_theme: next });
-  }, []);
+  // Each setter updates the app-shell source of truth (which normalizes,
+  // persists to localStorage, and notifies consumers) then mirrors the change
+  // to the backend.
+  const updateCodeBlockTheme = useCallback(
+    async (next: CodeBlockThemeId) => {
+      setAppShellCodeBlockTheme(next);
+      await persistUiSettingsPatch({ code_block_theme: next });
+    },
+    [setAppShellCodeBlockTheme],
+  );
 
-  const updateCodeBlockShowLineNumbers = useCallback(async (next: boolean) => {
-    setCodeBlockShowLineNumbers(next);
-    writeStoredCodeBlockShowLineNumbers(next);
-    await persistUiSettingsPatch({ code_block_show_line_numbers: next });
-  }, []);
+  const updateCodeBlockShowLineNumbers = useCallback(
+    async (next: boolean) => {
+      setAppShellCodeBlockShowLineNumbers(next);
+      await persistUiSettingsPatch({ code_block_show_line_numbers: next });
+    },
+    [setAppShellCodeBlockShowLineNumbers],
+  );
 
-  const updateCodeBlockWrapLongLines = useCallback(async (next: boolean) => {
-    setCodeBlockWrapLongLines(next);
-    writeStoredCodeBlockWrapLongLines(next);
-    await persistUiSettingsPatch({ code_block_wrap_long_lines: next });
-  }, []);
+  const updateCodeBlockWrapLongLines = useCallback(
+    async (next: boolean) => {
+      setAppShellCodeBlockWrapLongLines(next);
+      await persistUiSettingsPatch({ code_block_wrap_long_lines: next });
+    },
+    [setAppShellCodeBlockWrapLongLines],
+  );
 
   // ── Catalog mutators ────────────────────────────────────────────────────
   const mutateCatalog = useCallback((mutator: (next: Catalog) => void) => {

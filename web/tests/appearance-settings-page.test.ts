@@ -45,23 +45,25 @@ test("appearance settings page: wires syntax theme select and toggle controls to
   assert.match(source, /<Toggle/);
 });
 
-test("appearance settings page: renders code-block switch checked state from app-shell storage", () => {
+test("appearance settings page: renders code-block switch checked state from the settings context", () => {
   const source = readAppearancePage();
 
+  // Values come straight from the settings context (backed by AppShellContext,
+  // the single source of truth), not a page-local storage-hydrated mirror.
   assert.match(
     source,
-    /readStoredCodeBlockShowLineNumbers/,
-    "Code-block switches must hydrate from app-shell storage so reloaded localStorage true values render checked.",
+    /checked=\{codeBlockShowLineNumbers\}/,
+    "Show line numbers switch should render from the context value, not page-local state.",
   );
   assert.match(
     source,
-    /checked=\{showLineNumbersChecked\}/,
-    "Show line numbers switch should render from page-local storage-hydrated state, not the SettingsContext default false initializer.",
+    /checked=\{codeBlockWrapLongLines\}/,
+    "Wrap long lines switch should render from the context value, not page-local state.",
   );
-  assert.match(
+  assert.doesNotMatch(
     source,
-    /checked=\{wrapLongLinesChecked\}/,
-    "Wrap long lines switch should render from page-local storage-hydrated state, not the SettingsContext default false initializer.",
+    /useState\(false\)/,
+    "The page must not keep local mirror state for the code-block switches.",
   );
 });
 
