@@ -746,10 +746,22 @@ class WriteMemoryTool(_PromptHintsMixin, BaseTool):
                 success=False,
                 metadata={"op": op},
             )
-        entry_id = report.results[0].entry_id if report.results else None
+        result0 = report.results[0] if report.results else None
+        entry_id = result0.entry_id if result0 else None
+        deduplicated = bool(result0 and result0.detail == "duplicate")
+        if deduplicated:
+            # Give the model an explicit "already saved" signal so it stops
+            # re-issuing the same write_memory in later turns (issue #647).
+            content = f"preference already saved (entry={entry_id}); skipped duplicate."
+        else:
+            content = f"preference {op}ed (entry={entry_id or target_id})."
         return ToolResult(
-            content=f"preference {op}ed (entry={entry_id or target_id}).",
-            metadata={"op": op, "entry_id": entry_id or target_id},
+            content=content,
+            metadata={
+                "op": op,
+                "entry_id": entry_id or target_id,
+                "deduplicated": deduplicated,
+            },
         )
 
 
