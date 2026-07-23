@@ -112,10 +112,27 @@ export function useChatAutoScroll({
   useEffect(() => {
     if (!isStreaming || !hasMessages) return;
     let rafId = 0;
+    // ``scrollTop`` this loop last pinned. Before re-pinning we check whether
+    // the actual position has dropped below it: if so the user moved up by
+    // some means the gesture listeners below don't cover — dragging the
+    // scrollbar thumb, PageUp/Home, arrow keys — so we release the pin instead
+    // of yanking them back to the bottom (issue #649). Comparing against our
+    // own last write (rather than raw ``scrollTop``) is what makes this immune
+    // to the rAF-vs-user fight: content growth never lowers ``scrollTop`` (the
+    // container opts into ``overflow-anchor: none``), so a decrease is always
+    // user intent.
+    let lastPinned: number | null = null;
     const tick = () => {
       if (shouldAutoScrollRef.current) {
         const container = containerRef.current;
-        if (container) container.scrollTop = container.scrollHeight;
+        if (container) {
+          if (lastPinned !== null && container.scrollTop < lastPinned - 4) {
+            shouldAutoScrollRef.current = false;
+          } else {
+            container.scrollTop = container.scrollHeight;
+            lastPinned = container.scrollTop;
+          }
+        }
       }
       rafId = requestAnimationFrame(tick);
     };
