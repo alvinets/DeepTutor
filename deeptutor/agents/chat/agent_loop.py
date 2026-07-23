@@ -31,6 +31,7 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from deeptutor.agents._shared.capability_result import emit_capability_result
+from deeptutor.agents.chat.dsml_tool_calls import extract_dsml_tool_calls, has_dsml_tool_calls
 from deeptutor.core.agentic.messages import assistant_message_with_tool_calls
 from deeptutor.core.agentic.tool_dispatch import DispatchOutcome
 from deeptutor.core.agentic.usage import message_content_chars, record_streamed_usage
@@ -480,6 +481,11 @@ class AgentLoop:
         output_chars = 0
         finish_reason = ""
         think_filter = InlineThinkFilter()
+        # Once a round's content channel starts carrying DeepSeek DSML tool-call
+        # markup (issue #666), divert the rest of it to the thinking channel so
+        # the raw markup never streams as the user-facing answer. It is parsed
+        # into real tool calls after the stream completes.
+        dsml_stream_active = False
         chunk_meta = merge_trace_metadata(trace_meta, {"trace_kind": "llm_chunk"})
 
         async def _emit_segments(segments: list[tuple[str, str]]) -> None:
@@ -529,7 +535,12 @@ class AgentLoop:
                     # whether to render it as narration or as the answer.
                     # Inline <think> segments are split off to the thinking
                     # channel so the content stream stays user-facing.
-                    await _emit_segments(think_filter.feed(content))
+                    if not dsml_stream_active and has_dsml_tool_calls("".join(text_parts)):
+                        dsml_stream_active = True
+                    segments = think_filter.feed(content)
+                    if dsml_stream_active:
+                        segments = [("thinking", seg) for _, seg in segments]
+                    await _emit_segments(segments)
 
                 for tc_delta in getattr(delta, "tool_calls", None) or []:
                     index = int(getattr(tc_delta, "index", 0) or 0)
@@ -554,7 +565,10 @@ class AgentLoop:
                 with suppress(Exception):
                     await close()
 
-        await _emit_segments(think_filter.flush())
+        flushed = think_filter.flush()
+        if dsml_stream_active:
+            flushed = [("thinking", seg) for _, seg in flushed]
+        await _emit_segments(flushed)
         text = "".join(text_parts)
         record_streamed_usage(
             self.pipeline.usage,
@@ -572,6 +586,17 @@ class AgentLoop:
             for idx, data in sorted(tool_acc.items())
             if data.get("name")
         ]
+
+        # Fallback: a DeepSeek deployment without native function calling emits
+        # its tool calls as DSML markup in the content channel instead of as
+        # structured ``tool_calls`` (issue #666). Parse them out so the normal
+        # dispatch path runs the tools, and drop the markup from ``text`` so it
+        # can't leak into the conversation / answer.
+        if not tool_calls:
+            dsml_calls, cleaned_text = extract_dsml_tool_calls(text)
+            if dsml_calls:
+                tool_calls = dsml_calls
+                text = cleaned_text
 
         await self.stream.progress(
             "",
