@@ -167,8 +167,9 @@ class OpenAICompatibleEmbeddingAdapter(BaseEmbeddingAdapter):
         payload = {
             "input": input_payload,
             "model": model,
-            "encoding_format": request.encoding_format or "float",
         }
+        if request.encoding_format:
+            payload["encoding_format"] = request.encoding_format
 
         # `dimensions` is opt-in. The user's `send_dimensions` flag wins when set
         # explicitly (True/False); otherwise we fall back to a model-family
