@@ -130,6 +130,36 @@ class TestParseJsonResponseTrailingProse:
         assert result == [{"id": 1}, {"id": 2}]
 
 
+class TestParseJsonResponseLeadingProse:
+    """Untagged reasoning preludes with JSON fragments inside (issue #692)."""
+
+    def test_leading_prose_with_brace_example_keeps_payload(self) -> None:
+        raw = (
+            'The output format is {"chapters": []} so I will fill it in.\n'
+            '{"chapters":[{"title":"C1"},{"title":"C2"},{"title":"C3"}]}'
+        )
+        result = parse_json_response(raw, fallback=None)
+        assert result == {"chapters": [{"title": "C1"}, {"title": "C2"}, {"title": "C3"}]}
+
+    def test_two_concatenated_objects_longest_wins(self) -> None:
+        raw = '{"plan": "six chapters"}\n{"chapters":[{"title":"C1"},{"title":"C2"}]}'
+        result = parse_json_response(raw, fallback=None)
+        assert result == {"chapters": [{"title": "C1"}, {"title": "C2"}]}
+
+    def test_prose_on_both_sides_keeps_payload(self) -> None:
+        raw = (
+            'Schema: {"chapters": []}.\n'
+            '{"chapters":[{"title":"C1"}]}\n'
+            "Note: each entry follows {title} form."
+        )
+        result = parse_json_response(raw, fallback=None)
+        assert result == {"chapters": [{"title": "C1"}]}
+
+    def test_single_small_object_still_returned(self) -> None:
+        raw = 'Prefix prose {"only": 1} suffix prose'
+        assert parse_json_response(raw, fallback=None) == {"only": 1}
+
+
 # ---------------------------------------------------------------------------
 # parse_json_response — <think> reasoning tags (issue #673)
 # ---------------------------------------------------------------------------

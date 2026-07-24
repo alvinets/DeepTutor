@@ -31,6 +31,38 @@ logger = logging.getLogger(__name__)
 _UNSET = object()
 
 
+def _decode_longest_json_value(text: str) -> Any:
+    """Return the longest top-level JSON value decodable from *text*.
+
+    LLM responses may surround the payload with prose on either side, and that
+    prose can itself contain small valid JSON fragments (e.g. schema examples
+    in a reasoning prelude — issues #673/#692). Decoding every candidate and
+    keeping the longest one picks the actual payload over such fragments.
+    Returns ``_UNSET`` when nothing decodes.
+    """
+    decoder = json.JSONDecoder()
+    best: Any = _UNSET
+    best_length = 0
+    pos = 0
+    while True:
+        starts = [i for i in (text.find("{", pos), text.find("[", pos)) if i != -1]
+        if not starts:
+            return best
+        start = min(starts)
+        try:
+            parsed, consumed = decoder.raw_decode(text[start:])
+        except json.JSONDecodeError as err:
+            # Resume past the failure point: an opener inside the failed span
+            # could only yield a fragment of it, and repair handles those.
+            pos = start + max(1, err.pos)
+            continue
+        except RecursionError:
+            return best
+        if consumed > best_length:
+            best, best_length = parsed, consumed
+        pos = start + consumed
+
+
 def parse_json_response(
     response: str,
     logger_instance: Any = None,
@@ -116,16 +148,14 @@ def parse_json_response(
             except (json.JSONDecodeError, TypeError):
                 extracted_response = cleaned
 
-    # Prefer raw_decode before repair so trailing brace-prose cannot become a wrapping array.
+    # Prefer raw_decode before repair so brace-bearing prose around the payload
+    # cannot corrupt it (json-repair would wrap payload + trailing prose into
+    # an array). The longest decodable value wins, so a schema example inside
+    # a reasoning prelude never shadows the real payload behind it (#692).
     if isinstance(extracted_response, str):
-        stripped = extracted_response.lstrip()
-        for idx, ch in enumerate(stripped):
-            if ch in "{[":
-                try:
-                    parsed, _end = json.JSONDecoder().raw_decode(stripped[idx:])
-                    return parsed
-                except json.JSONDecodeError:
-                    break
+        decoded = _decode_longest_json_value(extracted_response)
+        if decoded is not _UNSET:
+            return decoded
 
     # Strategy 2: Try json-repair if available
     if repair_json is None:
