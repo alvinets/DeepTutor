@@ -15,8 +15,8 @@ from slackify_markdown import slackify_markdown
 from deeptutor.partners.bus.events import OutboundMessage
 from deeptutor.partners.bus.queue import MessageBus
 from deeptutor.partners.channels.base import BaseChannel
-from deeptutor.partners.helpers import convert_markdown_table_to_labeled_rows
 from deeptutor.partners.config.schema import Base, DeliveryOverrides
+from deeptutor.partners.helpers import convert_markdown_table_to_labeled_rows
 
 # Slack's WSS endpoint can be blocked while HTTPS still works (auth_test
 # succeeds, Socket Mode hangs) — bound the handshake so the failure is loud.

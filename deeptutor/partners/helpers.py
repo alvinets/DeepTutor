@@ -74,24 +74,19 @@ def split_message(content: str, max_len: int = 2000) -> list[str]:
     return chunks
 
 
-def convert_markdown_table_to_labeled_rows(table_text: str) -> str:
-    """Convert a Markdown pipe table to labeled rows (for Slack-style text).
+def split_markdown_table_row(line: str) -> list[str]:
+    """Split one Markdown pipe-table row into stripped cells.
 
-    Empty cells are kept so blank columns are not dropped.
+    Strips exactly one leading and one trailing pipe so leading/trailing empty
+    cells (``|| a |`` / ``| a ||``) survive — ``str.strip("|")`` would collapse
+    them and shift every column.
     """
-    lines = [ln.strip() for ln in table_text.strip().splitlines() if ln.strip()]
-    if len(lines) < 2:
-        return table_text
-    headers = [h.strip() for h in lines[0].strip("|").split("|")]
-    start = 2 if re.fullmatch(r"[|\s:\-]+", lines[1]) else 1
-    rows: list[str] = []
-    for line in lines[start:]:
-        cells = [c.strip() for c in line.strip("|").split("|")]
-        cells = (cells + [""] * len(headers))[: len(headers)]
-        parts = [f"**{headers[i]}**: {cells[i]}" for i in range(len(headers))]
-        if parts:
-            rows.append(" · ".join(parts))
-    return "\n".join(rows)
+    line = line.strip()
+    if line.startswith("|"):
+        line = line[1:]
+    if line.endswith("|"):
+        line = line[:-1]
+    return [cell.strip() for cell in line.split("|")]
 
 
 def is_markdown_table_separator_row(cells: list[str]) -> bool:
@@ -100,3 +95,23 @@ def is_markdown_table_separator_row(cells: list[str]) -> bool:
     An all-empty row is not a separator (`all([])` would otherwise be True).
     """
     return bool(any(c for c in cells)) and all(re.match(r"^:?-+:?$", c) for c in cells if c)
+
+
+def convert_markdown_table_to_labeled_rows(table_text: str) -> str:
+    """Convert a Markdown pipe table to labeled rows (for Slack-style text).
+
+    Empty cells are kept so blank columns are not dropped.
+    """
+    lines = [ln.strip() for ln in table_text.strip().splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return table_text
+    headers = split_markdown_table_row(lines[0])
+    start = 2 if is_markdown_table_separator_row(split_markdown_table_row(lines[1])) else 1
+    rows: list[str] = []
+    for line in lines[start:]:
+        cells = split_markdown_table_row(line)
+        cells = (cells + [""] * len(headers))[: len(headers)]
+        parts = [f"**{headers[i]}**: {cells[i]}" for i in range(len(headers))]
+        if parts:
+            rows.append(" · ".join(parts))
+    return "\n".join(rows)

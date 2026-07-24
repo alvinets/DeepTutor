@@ -6,12 +6,7 @@ from deeptutor.partners.channels.feishu import FeishuChannel
 
 
 def test_leading_empty_header_keeps_column_alignment() -> None:
-    table = (
-        "|| Name | Age |\n"
-        "| --- | --- | --- |\n"
-        "| id1 | Alice | 30 |\n"
-        "| id2 | Bob | 25 |\n"
-    )
+    table = "|| Name | Age |\n| --- | --- | --- |\n| id1 | Alice | 30 |\n| id2 | Bob | 25 |\n"
     parsed = FeishuChannel._parse_md_table(table)
     assert parsed is not None
     assert [c["display_name"] for c in parsed["columns"]] == ["", "Name", "Age"]
@@ -22,12 +17,7 @@ def test_leading_empty_header_keeps_column_alignment() -> None:
 
 
 def test_trailing_empty_header_keeps_row_values() -> None:
-    table = (
-        "| Name | Age ||\n"
-        "| --- | --- | --- |\n"
-        "| Alice | 30 | VIP |\n"
-        "| Bob | 25 | |\n"
-    )
+    table = "| Name | Age ||\n| --- | --- | --- |\n| Alice | 30 | VIP |\n| Bob | 25 | |\n"
     parsed = FeishuChannel._parse_md_table(table)
     assert parsed is not None
     assert [c["display_name"] for c in parsed["columns"]] == ["Name", "Age", ""]

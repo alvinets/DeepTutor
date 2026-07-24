@@ -6,12 +6,7 @@ from deeptutor.partners.helpers import convert_markdown_table_to_labeled_rows
 
 
 def test_empty_cells_kept_in_converted_table() -> None:
-    table = (
-        "| Name | Score | Note |\n"
-        "| --- | --- | --- |\n"
-        "| Alice |  | ok |\n"
-        "| Bob | 10 |  |\n"
-    )
+    table = "| Name | Score | Note |\n| --- | --- | --- |\n| Alice |  | ok |\n| Bob | 10 |  |\n"
     out = convert_markdown_table_to_labeled_rows(table)
     assert out.count("**Name**:") == 2
     assert out.count("**Score**:") == 2
