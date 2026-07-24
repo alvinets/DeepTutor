@@ -835,7 +835,7 @@ class SQLiteSessionStore:
         events: list[dict[str, Any]] | None = None,
         attachments: list[dict[str, Any]] | None = None,
         metadata: dict[str, Any] | None = None,
-        parent_message_id: int | None | _Unset = _PARENT_AUTO,
+        parent_message_id: int | str | None | _Unset = _PARENT_AUTO,
     ) -> int:
         now = time.time()
         with self._connect() as conn:
@@ -903,7 +903,10 @@ class SQLiteSessionStore:
         events: list[dict[str, Any]] | None = None,
         attachments: list[dict[str, Any]] | None = None,
         metadata: dict[str, Any] | None = None,
-        parent_message_id: int | None | _Unset = _PARENT_AUTO,
+        # ``str`` satisfies SessionStoreProtocol (PocketBase parents are string
+        # record ids); on the SQLite backend a non-None parent is always the
+        # integer rowid this store itself returned.
+        parent_message_id: int | str | None | _Unset = _PARENT_AUTO,
     ) -> int:
         return await self._run(
             self._add_message_sync,

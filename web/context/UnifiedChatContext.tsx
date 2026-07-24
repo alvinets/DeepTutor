@@ -623,11 +623,15 @@ function reducer(state: ProviderState, action: Action): ProviderState {
       // long conversations.
       const session = state.sessions[action.key];
       if (!session) return state;
-      const result = reconcileTurnIds(session.messages, session.selectedBranches, {
-        turnId: action.turnId,
-        userMessageId: action.userMessageId,
-        assistantMessageId: action.assistantMessageId,
-      });
+      const result = reconcileTurnIds(
+        session.messages,
+        session.selectedBranches,
+        {
+          turnId: action.turnId,
+          userMessageId: action.userMessageId,
+          assistantMessageId: action.assistantMessageId,
+        },
+      );
       if (!result.changed) return state;
       return {
         ...state,

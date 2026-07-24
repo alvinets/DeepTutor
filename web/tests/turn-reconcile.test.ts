@@ -14,7 +14,12 @@ const TURN = "turn_abc";
 function optimisticTurn(): Msg[] {
   return [
     { id: 10, role: "user", content: "earlier", parentMessageId: null },
-    { id: 11, role: "assistant", content: "earlier reply", parentMessageId: 10 },
+    {
+      id: 11,
+      role: "assistant",
+      content: "earlier reply",
+      parentMessageId: 10,
+    },
     { id: -2000, role: "user", content: "question", parentMessageId: 11 },
     {
       id: -2001,
@@ -28,11 +33,15 @@ function optimisticTurn(): Msg[] {
 
 test("swaps optimistic user+assistant ids and parent pointers", () => {
   const input = optimisticTurn();
-  const result = reconcileTurnIds(input, {}, {
-    turnId: TURN,
-    userMessageId: 12,
-    assistantMessageId: 13,
-  });
+  const result = reconcileTurnIds(
+    input,
+    {},
+    {
+      turnId: TURN,
+      userMessageId: 12,
+      assistantMessageId: 13,
+    },
+  );
   assert.equal(result.changed, true);
   const [, , user, assistant] = result.messages;
   assert.equal(user.id, 12);
@@ -54,11 +63,15 @@ test("does not touch rows that already carry persisted ids", () => {
       events: [{ turn_id: TURN }],
     },
   ];
-  const result = reconcileTurnIds(messages, {}, {
-    turnId: TURN,
-    userMessageId: 99,
-    assistantMessageId: 98,
-  });
+  const result = reconcileTurnIds(
+    messages,
+    {},
+    {
+      turnId: TURN,
+      userMessageId: 99,
+      assistantMessageId: 98,
+    },
+  );
   assert.equal(result.changed, false);
   assert.equal(result.messages, messages);
 });
@@ -84,11 +97,15 @@ test("a stale done replay for an old turn cannot restamp a newer turn", () => {
   ];
   // done replay for turn_old: its bubble already has real ids → no-op, and
   // crucially the newer optimistic bubble is left alone.
-  const result = reconcileTurnIds(messages, {}, {
-    turnId: "turn_old",
-    userMessageId: 77,
-    assistantMessageId: 78,
-  });
+  const result = reconcileTurnIds(
+    messages,
+    {},
+    {
+      turnId: "turn_old",
+      userMessageId: 77,
+      assistantMessageId: 78,
+    },
+  );
   assert.equal(result.changed, false);
 });
 
@@ -103,22 +120,30 @@ test("regenerate turns reconcile the assistant id only", () => {
       events: [{ turn_id: TURN }],
     },
   ];
-  const result = reconcileTurnIds(messages, {}, {
-    turnId: TURN,
-    userMessageId: null,
-    assistantMessageId: 41,
-  });
+  const result = reconcileTurnIds(
+    messages,
+    {},
+    {
+      turnId: TURN,
+      userMessageId: null,
+      assistantMessageId: 41,
+    },
+  );
   assert.equal(result.changed, true);
   assert.equal(result.messages[1].id, 41);
   assert.equal(result.messages[0].id, 40);
 });
 
 test("falls back to the last assistant bubble when turn id is missing", () => {
-  const result = reconcileTurnIds(optimisticTurn(), {}, {
-    turnId: null,
-    userMessageId: 12,
-    assistantMessageId: 13,
-  });
+  const result = reconcileTurnIds(
+    optimisticTurn(),
+    {},
+    {
+      turnId: null,
+      userMessageId: 12,
+      assistantMessageId: 13,
+    },
+  );
   assert.equal(result.changed, true);
   assert.equal(result.messages[3].id, 13);
 });

@@ -106,8 +106,7 @@ export function reconcileTurnIds<T extends ReconcilableMessage>(
   if (remap.size === 0) return unchanged;
 
   const nextMessages = messages.map((message) => {
-    const nextId =
-      message.id !== undefined ? remap.get(message.id) : undefined;
+    const nextId = message.id !== undefined ? remap.get(message.id) : undefined;
     const nextParent =
       message.parentMessageId != null
         ? remap.get(message.parentMessageId)
@@ -131,8 +130,9 @@ export function reconcileTurnIds<T extends ReconcilableMessage>(
         ? undefined
         : remap.get(parentAsNumber);
       const remappedChild = remap.get(childId);
-      rebuilt[remappedParent !== undefined ? String(remappedParent) : parentKey] =
-        remappedChild !== undefined ? remappedChild : childId;
+      rebuilt[
+        remappedParent !== undefined ? String(remappedParent) : parentKey
+      ] = remappedChild !== undefined ? remappedChild : childId;
       if (remappedParent !== undefined || remappedChild !== undefined) {
         branchesChanged = true;
       }
@@ -140,5 +140,9 @@ export function reconcileTurnIds<T extends ReconcilableMessage>(
     if (branchesChanged) nextBranches = rebuilt;
   }
 
-  return { messages: nextMessages, selectedBranches: nextBranches, changed: true };
+  return {
+    messages: nextMessages,
+    selectedBranches: nextBranches,
+    changed: true,
+  };
 }
