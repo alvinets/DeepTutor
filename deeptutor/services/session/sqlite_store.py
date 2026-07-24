@@ -1712,36 +1712,24 @@ class SQLiteSessionStore:
         question_id: str,
         turn_id: str | None = None,
     ) -> dict[str, Any] | None:
+        # A missing turn_id only ever matches the legacy namespace (rows
+        # persisted before turn scoping, migrated with turn_id=''). It must
+        # never fall back to other turns' rows: positional question ids
+        # (``q_1``..``q_N``) repeat across quizzes in one session, so a
+        # cross-turn match would leak a previous quiz's answers into a new
+        # quiz (issues #487 / #677).
         with self._connect() as conn:
-            if turn_id is not None:
-                row = conn.execute(
-                    """
-                    SELECT n.*, COALESCE(s.title, '') AS session_title
-                    FROM notebook_entries n
-                    LEFT JOIN sessions s ON s.id = n.session_id
-                    WHERE n.session_id = ?
-                      AND n.turn_id = ?
-                      AND n.question_id = ?
-                    """,
-                    (session_id, turn_id, question_id),
-                ).fetchone()
-            else:
-                # Legacy lookup: return the most recent matching entry across
-                # turns. Two quizzes in the same session can share a question_id
-                # (positional IDs like ``q_1``), so we explicitly pick the
-                # newest one to keep behavior deterministic for callers that
-                # don't yet pass a turn_id.
-                row = conn.execute(
-                    """
-                    SELECT n.*, COALESCE(s.title, '') AS session_title
-                    FROM notebook_entries n
-                    LEFT JOIN sessions s ON s.id = n.session_id
-                    WHERE n.session_id = ? AND n.question_id = ?
-                    ORDER BY n.updated_at DESC, n.id DESC
-                    LIMIT 1
-                    """,
-                    (session_id, question_id),
-                ).fetchone()
+            row = conn.execute(
+                """
+                SELECT n.*, COALESCE(s.title, '') AS session_title
+                FROM notebook_entries n
+                LEFT JOIN sessions s ON s.id = n.session_id
+                WHERE n.session_id = ?
+                  AND n.turn_id = ?
+                  AND n.question_id = ?
+                """,
+                (session_id, turn_id if turn_id is not None else "", question_id),
+            ).fetchone()
         if row is None:
             return None
         return self._serialize_notebook_entry(row)
