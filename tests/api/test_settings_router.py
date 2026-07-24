@@ -440,6 +440,13 @@ def test_llm_provider_choices_include_atlascloud() -> None:
     assert llm["atlascloud"]["base_url"] == "https://api.atlascloud.ai/v1"
 
 
+def test_llm_provider_choices_include_edenai() -> None:
+    llm = {item["value"]: item for item in settings_router._provider_choices()["llm"]}
+
+    assert llm["edenai"]["label"] == "Eden AI"
+    assert llm["edenai"]["base_url"] == "https://api.edenai.run/v3"
+
+
 @pytest.mark.asyncio
 async def test_get_llm_options_returns_redacted_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
     catalog = _build_catalog(

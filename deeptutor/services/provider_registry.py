@@ -91,6 +91,7 @@ PROVIDER_ALIASES = {
     "atlas": "atlascloud",
     "atlas_cloud": "atlascloud",
     "atlas-cloud": "atlascloud",
+    "eden_ai": "edenai",
 }
 
 
@@ -150,7 +151,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
     ),
     ProviderSpec(
         name="edenai",
-        keywords=("edenai", "eden_ai", "eden-ai"),
+        keywords=("edenai",),
         env_key="EDENAI_API_KEY",
         display_name="Eden AI",
         backend="openai_compat",
