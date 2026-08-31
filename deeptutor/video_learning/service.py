@@ -6,10 +6,10 @@ import asyncio
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import fcntl
 import hashlib
 import ipaddress
 import json
+import sys
 from pathlib import Path
 import re
 from typing import Any, Awaitable, Callable, Literal
@@ -325,11 +325,23 @@ class TimedMediaStore:
         lock_root = self.root / ".locks"
         lock_root.mkdir(parents=True, exist_ok=True)
         with (lock_root / f"{material_id}.lock").open("a+", encoding="utf-8") as handle:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            if sys.platform == "win32":
+                import msvcrt
+
+                msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+                try:
+                    yield
+                finally:
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def get_timed_media_store() -> TimedMediaStore:
