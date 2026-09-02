@@ -635,6 +635,23 @@ def _exception_failure_metadata(exc: Exception) -> dict:
     return metadata
 
 
+async def _probe_parse_errors(file_paths: list[str]) -> list[str]:
+    """Attempt to parse each file and collect errors for diagnostic reporting."""
+    from deeptutor.services.parsing import ParserError, get_parse_service
+
+    errors: list[str] = []
+    parse_service = get_parse_service()
+    for fpath_str in file_paths:
+        fpath = Path(fpath_str)
+        try:
+            await asyncio.to_thread(parse_service.parse, fpath)
+        except ParserError as exc:
+            errors.append(f"{fpath.name}: {exc}")
+        except Exception as exc:
+            errors.append(f"{fpath.name}: {exc}")
+    return errors
+
+
 def _validate_registered_provider(raw_provider: str | None) -> str:
     """Resolve a requested provider to a known engine.
 
@@ -3066,6 +3083,15 @@ async def run_reindex_task(kb_name: str, base_dir: str, task_id: str, signature_
                 progress_callback=_on_progress,
             )
             if not success:
+                parse_failures = await _probe_parse_errors(file_paths)
+                if parse_failures:
+                    details = "; ".join(parse_failures[:3])
+                    if len(parse_failures) > 3:
+                        details += f"; and {len(parse_failures) - 3} more"
+                    raise RuntimeError(
+                        f"Re-index failed: document parsing error(s) detected. "
+                        f"{details}. Check Settings → Document Parsing for the active engine."
+                    )
                 raise RuntimeError(f"Re-index found no valid documents to index in '{kb_name}'.")
 
             completed_at = datetime.now().isoformat()
