@@ -741,6 +741,7 @@ export interface KnowledgeTaskResponse {
   id?: string;
   task_id?: string;
   message?: string;
+  status?: string;
   noop?: boolean;
 }
 
