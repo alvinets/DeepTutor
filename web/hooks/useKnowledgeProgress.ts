@@ -162,7 +162,9 @@ export function useKnowledgeProgress(options?: UseKnowledgeProgressOptions) {
       socketTargetsRef.current[kbName] = {
         taskId: expectedTaskId,
         retry:
-          existingTarget && existingTarget.taskId === expectedTaskId
+          existingTarget &&
+          existingTarget.taskId === expectedTaskId &&
+          typeof existingTarget.retry === "number"
             ? existingTarget.retry
             : 0,
       };
@@ -247,7 +249,12 @@ export function useKnowledgeProgress(options?: UseKnowledgeProgressOptions) {
         if (socketsRef.current[kbName] !== socket) return;
         delete socketsRef.current[kbName];
         const target = socketTargetsRef.current[kbName];
-        if (!target || target.taskId !== expectedTaskId) return;
+        if (
+          !target ||
+          typeof target.retry !== "number" ||
+          target.taskId !== expectedTaskId
+        )
+          return;
         const delay = Math.min(500 * 2 ** target.retry, 5000);
         target.retry += 1;
         socketRetryTimersRef.current[kbName] = setTimeout(() => {

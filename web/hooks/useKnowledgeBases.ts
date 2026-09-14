@@ -44,6 +44,13 @@ import {
 import { useKnowledgeProgress } from "@/hooks/useKnowledgeProgress";
 import { useKnowledgeHistory } from "@/hooks/useKnowledgeHistory";
 
+const showInfo = (message: string) => {
+  console.log("INFO:", message);
+};
+const showError = (message: string) => {
+  console.error("ERROR:", message);
+};
+
 const DEFAULT_PROVIDER_FALLBACK: RagProviderSummary[] = [
   {
     id: "llamaindex",
@@ -201,30 +208,67 @@ export function useKnowledgeBases() {
       searchMode?: string;
       embeddingModel?: EmbeddingModelSelection;
     }): Promise<KnowledgeTaskResponse> => {
-      const result = await createKbApi(params);
-      invalidateKnowledgeCaches();
-      const fileCount = params.files.length;
-      if (result.task_id) {
-        progress.startTask({
-          kbName: result.id || params.name,
-          taskId: result.task_id,
-          kind: "create",
-          label: `Create ${params.name}`,
-          initialLogs: [
-            `Queued create task for ${params.name}.`,
-            "Waiting for backend indexing logs...",
-          ],
-          seed: {
-            stage: "initializing",
-            message: "Initializing knowledge base...",
-            current: 0,
-            total: fileCount,
-            progress_percent: 0,
-          },
-        });
+      try {
+        const result = await createKbApi(params);
+        invalidateKnowledgeCaches();
+        if (!result) {
+          throw new Error(
+            "Empty response from knowledge base creation API",
+          );
+        }
+
+        const kbName = result.id || params.name;
+        const fileCount = params.files.length;
+        if (result.task_id) {
+          progress.startTask({
+            kbName,
+            taskId: result.task_id,
+            kind: "create",
+            label: `Create ${params.name}`,
+            initialLogs: [
+              `Queued create task for ${params.name}.`,
+              "Waiting for backend indexing logs...",
+            ],
+            seed: {
+              stage: "initializing",
+              message: "Initializing knowledge base...",
+              current: 0,
+              total: fileCount,
+              progress_percent: 0,
+            },
+          });
+        } else if (result.status) {
+          showInfo(
+            `Knowledge base "${params.name}" creation started. Status: ${result.status}`,
+          );
+          progress.subscribeWs(kbName);
+        } else {
+          progress.subscribeWs(kbName);
+          showInfo("Knowledge base creation queued for processing.");
+        }
+
+        await load({ force: true, showSpinner: false });
+        return result;
+      } catch (error: unknown) {
+        console.error("KB creation error:", error);
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to create knowledge base";
+
+        if (errorMessage.includes("not initialized")) {
+          showInfo(
+            "Knowledge base created but not yet initialized. Click 'Retry' to initialize, or add a document to trigger initialization.",
+          );
+        } else if (errorMessage.includes("already exists")) {
+          showError("A knowledge base with this name already exists.");
+        } else {
+          showError(errorMessage);
+        }
+
+        await load({ force: true, showSpinner: false });
+        throw error;
       }
-      await load({ force: true, showSpinner: false });
-      return result;
     },
     [load, progress],
   );
