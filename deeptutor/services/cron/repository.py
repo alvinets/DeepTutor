@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 import contextlib
-import fcntl
 import json
 from pathlib import Path
 import sqlite3
+import sys
 import time
 from typing import Any, Protocol
 
@@ -49,11 +49,23 @@ class SQLiteCronRepository:
     def _migration_lock(self):
         self._migration_lock_path.parent.mkdir(parents=True, exist_ok=True)
         with self._migration_lock_path.open("a+b") as handle:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            if sys.platform == "win32":
+                import msvcrt
+
+                msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+                try:
+                    yield
+                finally:
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+                try:
+                    yield
+                finally:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
     @staticmethod
     def _is_sqlite(path: Path) -> bool:
