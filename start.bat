@@ -58,11 +58,25 @@ if not exist ".venv\Lib\site-packages\deeptutor" (
 
 rem ---- boot the backend API server ----
 echo [INFO] Starting DeepTutor backend server ...
-echo [INFO] Press Ctrl+C to stop.
-echo.
-python -m deeptutor.api.run_server
+echo [INFO] Backend running on http://127.0.0.1:8001
+start /B python -m deeptutor.api.run_server >NUL 2>&1
+timeout /T 3 >NUL
+
+rem ---- start the frontend development server ----
+echo [INFO] Starting DeepTutor frontend development server ...
+cd /d "web"
+start "" npm run dev >NUL 2>&1
+timeout /T 3 >NUL
 
 echo.
-echo [INFO] Server exited ^(exit code %errorlevel%^).
-pause
-exit /b %errorlevel%
+echo [INFO] Both DeepTutor backend and frontend are starting...
+echo [INFO] - Backend:   http://127.0.0.1:8001
+echo [INFO] - Frontend:  http://127.0.0.1:3782
+echo.
+echo [INFO] Press Ctrl+C in either console to stop that process.
+echo [INFO] Close both consoles to fully exit.
+echo.
+
+rem Keep the original console alive so the user sees the status
+timeout /T 5 >NUL
+exit /b 0
