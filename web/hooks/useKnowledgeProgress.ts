@@ -228,6 +228,9 @@ export function useKnowledgeProgress(options?: UseKnowledgeProgressOptions) {
         if (socketsRef.current[kbName] === socket) {
           delete socketsRef.current[kbName];
         }
+        // Snapshot the target at close-time. A concurrent subscribeWs call
+        // may have already moved socketTargetsRef to a newer target; reading
+        // the ref again here would mutate the wrong object's retry counter.
         const target = socketTargetsRef.current[kbName];
         if (!target || target.taskId !== expectedTaskId) return;
         const delay = Math.min(500 * 2 ** target.retry, 5000);
