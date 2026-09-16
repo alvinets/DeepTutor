@@ -283,6 +283,33 @@ async def _probe_parse_errors(file_paths: list[str]) -> list[str]:
     return errors
 
 
+def _classify_parse_failure(file_paths: list[str]) -> str:
+    """Return a human-readable diagnosis for why all files produced empty content."""
+    from deeptutor.services.parsing import get_parse_service
+
+    parse_service = get_parse_service()
+    scanned_count = 0
+    for fpath_str in file_paths:
+        fpath = Path(fpath_str)
+        try:
+            result = parse_service.parse(fpath, engine="text_only")
+            content = result.markdown.strip()
+            if not content or all(
+                line.startswith("--- Page") for line in content.split("\n") if line.strip()
+            ):
+                scanned_count += 1
+        except Exception:
+            pass
+    if scanned_count == len(file_paths) and file_paths:
+        return (
+            "All files appear to be scanned/image-only PDFs with no extractable text. "
+            "The active engine cannot read them. Install MinerU ("
+            "pip install -U 'mineru[all]>=3.4.5') or enable Docling OCR, then switch "
+            "the engine in Settings → Document Parsing."
+        )
+    return ""
+
+
 async def initialize_knowledge_base(
     kb_name: str,
     source_files: list[str],

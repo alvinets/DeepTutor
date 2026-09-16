@@ -652,6 +652,38 @@ async def _probe_parse_errors(file_paths: list[str]) -> list[str]:
     return errors
 
 
+def _classify_parse_failure(file_paths: list[str]) -> str:
+    """Return a human-readable diagnosis for why all files produced empty content.
+
+    Tests each file against the text-only engine as a baseline: if text-only
+    succeeds (even with only page markers) but the active engine fails, the
+    file is likely scanned/image-only and needs an OCR-capable parser.
+    """
+    from deeptutor.services.parsing import ParserError, get_parse_service
+
+    parse_service = get_parse_service()
+    scanned_count = 0
+    for fpath_str in file_paths:
+        fpath = Path(fpath_str)
+        # Try text-only as baseline
+        try:
+            result = parse_service.parse(fpath, engine="text_only")
+            # If text-only produces only page markers (no real content), classify as scanned
+            content = result.markdown.strip()
+            if not content or all(line.startswith("--- Page") for line in content.split("\n") if line.strip()):
+                scanned_count += 1
+        except Exception:
+            pass
+    if scanned_count == len(file_paths) and file_paths:
+        return (
+            "All files appear to be scanned/image-only PDFs with no extractable text. "
+            "The active engine cannot read them. Install MinerU ("
+            "pip install -U 'mineru[all]>=3.4.5') or enable Docling OCR, then switch "
+            "the engine in Settings → Document Parsing."
+        )
+    return ""
+
+
 def _validate_registered_provider(raw_provider: str | None) -> str:
     """Resolve a requested provider to a known engine.
 
@@ -3088,6 +3120,9 @@ async def run_reindex_task(kb_name: str, base_dir: str, task_id: str, signature_
                     details = "; ".join(parse_failures[:3])
                     if len(parse_failures) > 3:
                         details += f"; and {len(parse_failures) - 3} more"
+                    diagnosis = _classify_parse_failure(file_paths)
+                    if diagnosis:
+                        raise RuntimeError(f"Re-index failed: {diagnosis}")
                     raise RuntimeError(
                         f"Re-index failed: document parsing error(s) detected. "
                         f"{details}. Check Settings → Document Parsing for the active engine."
