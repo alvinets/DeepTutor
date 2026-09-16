@@ -207,12 +207,23 @@ class KnowledgeBaseInitializer:
                 image_progress_callback=_on_image_progress,
             )
             if not success:
+                parse_failures = await _probe_parse_errors(file_paths)
+                if parse_failures:
+                    details = "; ".join(parse_failures[:3])
+                    if len(parse_failures) > 3:
+                        details += f"; and {len(parse_failures) - 3} more"
+                    error_msg = (
+                        f"Document parsing failed for {len(parse_failures)} file(s). "
+                        f"{details}. Check Settings → Document Parsing."
+                    )
+                else:
+                    error_msg = "RAG pipeline returned failure — no documents were extractable."
                 self.progress_tracker.update(
                     ProgressStage.ERROR,
                     message_key="Document processing failed",
-                    error="RAG pipeline returned failure",
+                    error=error_msg,
                 )
-                raise RuntimeError("RAG pipeline returned failure")
+                raise RuntimeError(error_msg)
 
             self._update_metadata_with_provider(provider)
             self.progress_tracker.update(
@@ -253,6 +264,23 @@ class KnowledgeBaseInitializer:
         logger.info(f"Index versions: {len(index_versions)}")
         logger.info(f"Provider used: {self.rag_provider}")
         logger.info("=" * 50)
+
+
+async def _probe_parse_errors(file_paths: list[str]) -> list[str]:
+    """Attempt to parse each file and collect errors for diagnostic reporting."""
+    from deeptutor.services.parsing import ParserError, get_parse_service
+
+    errors: list[str] = []
+    parse_service = get_parse_service()
+    for fpath_str in file_paths:
+        fpath = Path(fpath_str)
+        try:
+            await asyncio.to_thread(parse_service.parse, fpath)
+        except ParserError as exc:
+            errors.append(f"{fpath.name}: {exc}")
+        except Exception as exc:
+            errors.append(f"{fpath.name}: {exc}")
+    return errors
 
 
 async def initialize_knowledge_base(
