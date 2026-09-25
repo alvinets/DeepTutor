@@ -33,7 +33,18 @@ def _modelscope_dir() -> Path:
 
 def mineru_models_ready(_source: str = "huggingface") -> bool:
     """Best-effort check for already-downloaded MinerU weights (fail-closed)."""
-    for root in (_hf_hub_dir(), _modelscope_dir()):
+    modelscope_root = _modelscope_dir()
+    roots = [_hf_hub_dir()]
+
+    # With MODELSCOPE_CACHE set, ModelScope stores downloaded repositories
+    # below <cache>/models. Keep scanning the cache root as well for existing
+    # installations that use the previously supported flat layout.
+    modelscope_models = modelscope_root / "models"
+    if modelscope_models.is_dir():
+        roots.append(modelscope_models)
+    roots.append(modelscope_root)
+
+    for root in roots:
         try:
             if not root.is_dir():
                 continue
