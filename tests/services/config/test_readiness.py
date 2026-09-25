@@ -58,6 +58,49 @@ def test_catalog_readiness_is_value_free_and_detects_stale_selection() -> None:
     assert "secret-model-name" not in serialized
 
 
+def test_task_reference_mode_is_ready_and_enables_reason_tool() -> None:
+    catalog = _empty_catalog()
+    catalog["services"]["llm"] = {
+        "active_profile_id": "llm-profile",
+        "active_model_id": "llm-model",
+        "profiles": [
+            {
+                "id": "llm-profile",
+                "models": [
+                    {
+                        "id": "llm-model",
+                        "model": "test-model",
+                    }
+                ],
+            }
+        ],
+    }
+    catalog["services"]["task"].update(
+        {
+            "mode": "reference",
+            "selection": {
+                "profile_id": "llm-profile",
+                "model_id": "llm-model",
+            },
+        }
+    )
+
+    rows = catalog_service_rows(catalog)
+
+    task = next(row for row in rows if row["id"] == "catalog.task")
+    assert task["state"] == "enabled_verified"
+    assert task["detail_code"] == "configuration_verified"
+    assert task["configured"] is True
+    assert task["verified"] is True
+
+    dependency_rows = {row["id"]: row for row in rows}
+    reason = next(
+        row for row in tool_rows(["reason"], dependency_rows) if row["id"] == "tool.reason"
+    )
+    assert reason["state"] == "enabled_verified"
+    assert reason["detail_code"] == "tool_ready"
+
+
 def test_selected_remote_parser_must_be_installed_ready_and_reachable() -> None:
     entries = [
         {"id": "tika", "name": "Tika", "available": True},

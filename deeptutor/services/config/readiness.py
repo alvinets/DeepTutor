@@ -237,6 +237,30 @@ def catalog_service_rows(
         required = name in required_services
         service = services.get(name) if isinstance(services.get(name), dict) else {}
         profiles = service.get("profiles") if isinstance(service.get("profiles"), list) else []
+
+        # Task models may reference a configured chat model instead of owning
+        # a task-specific profile. Reuse the task runtime's canonical check so
+        # readiness agrees with the configuration that will actually run.
+        if name == "task" and service.get("mode") == "reference":
+            from deeptutor.services.model_selection.tasks import task_service_configured
+
+            if task_service_configured(catalog):
+                rows.append(
+                    readiness_row(
+                        "catalog.task",
+                        "catalog",
+                        _SERVICE_LABELS[name],
+                        "enabled_verified",
+                        "configuration_verified",
+                        enabled=True,
+                        available=True,
+                        configured=True,
+                        verified=True,
+                        required=required,
+                    )
+                )
+                continue
+
         active_profile_id = service.get("active_profile_id")
         if not active_profile_id:
             rows.append(
