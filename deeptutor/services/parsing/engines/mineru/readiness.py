@@ -16,8 +16,19 @@ from pathlib import Path
 
 from ...base import ReadinessReport
 
-# Substrings of HF/ModelScope cache dir names that indicate MinerU's weights.
-_MODEL_DIR_HINTS = ("opendatalab", "mineru", "pdf-extract")
+# MinerU's ModelScope/Hugging Face repositories are published by OpenDataLab.
+# A populated OpenDataLab namespace alone can contain unrelated models.
+_MODEL_REPO_PREFIXES = ("mineru", "pdf-extract-kit")
+
+
+def _is_mineru_model_dir(path: Path) -> bool:
+    name = path.name.casefold()
+    if path.parent.name.casefold() == "opendatalab":
+        return name.startswith(_MODEL_REPO_PREFIXES)
+    for prefix in ("models--opendatalab--", "opendatalab--"):
+        if name.startswith(prefix):
+            return name[len(prefix) :].startswith(_MODEL_REPO_PREFIXES)
+    return False
 
 
 def _hf_hub_dir() -> Path:
@@ -49,13 +60,17 @@ def mineru_models_ready(_source: str = "huggingface") -> bool:
             if not root.is_dir():
                 continue
             for child in root.iterdir():
-                name = child.name.lower()
-                if (
-                    child.is_dir()
-                    and any(hint in name for hint in _MODEL_DIR_HINTS)
-                    and any(child.iterdir())
-                ):
-                    return True
+                if not child.is_dir():
+                    continue
+                # ModelScope may use <cache>/models/OpenDataLab/<repo>.
+                candidates = child.iterdir() if child.name.casefold() == "opendatalab" else (child,)
+                for candidate in candidates:
+                    if (
+                        candidate.is_dir()
+                        and _is_mineru_model_dir(candidate)
+                        and any(candidate.iterdir())
+                    ):
+                        return True
         except Exception:
             continue
     return False

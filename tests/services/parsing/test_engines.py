@@ -184,6 +184,14 @@ def test_mineru_models_ready_supports_modelscope_cache_layouts(tmp_path, monkeyp
 
     assert rd.mineru_models_ready() is True
 
+    namespaced_cache = tmp_path / "modelscope-namespaced"
+    namespaced_model = namespaced_cache / "models" / "OpenDataLab" / "PDF-Extract-Kit-1.0"
+    namespaced_model.mkdir(parents=True)
+    (namespaced_model / "config.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(namespaced_cache))
+
+    assert rd.mineru_models_ready() is True
+
     flat_cache = tmp_path / "modelscope-flat"
     flat_model = flat_cache / "OpenDataLab--PDF-Extract-Kit-1.0"
     flat_model.mkdir(parents=True)
@@ -191,6 +199,24 @@ def test_mineru_models_ready_supports_modelscope_cache_layouts(tmp_path, monkeyp
     monkeypatch.setenv("MODELSCOPE_CACHE", str(flat_cache))
 
     assert rd.mineru_models_ready() is True
+
+
+def test_mineru_models_ready_ignores_unrelated_modelscope_repositories(
+    tmp_path, monkeypatch
+) -> None:
+    from deeptutor.services.parsing.engines.mineru import readiness as rd
+
+    monkeypatch.setenv("HF_HOME", str(tmp_path / "empty-huggingface"))
+    cache = tmp_path / "modelscope"
+    unrelated = cache / "models" / "OpenDataLab" / "unrelated-model"
+    unrelated.mkdir(parents=True)
+    (unrelated / "model.safetensors").write_bytes(b"weights")
+    misleading = cache / "models" / "AnotherPublisher--MinerU-demo"
+    misleading.mkdir()
+    (misleading / "model.safetensors").write_bytes(b"weights")
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(cache))
+
+    assert rd.mineru_models_ready() is False
 
 
 def test_mineru_cloud_readiness_needs_token() -> None:
