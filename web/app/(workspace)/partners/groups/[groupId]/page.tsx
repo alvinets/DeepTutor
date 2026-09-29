@@ -152,12 +152,14 @@ export default function PartnerGroupPage() {
               groupId={groupId}
               sessionKey={sessionKey}
               onSelect={(key) => {
+                setGroupMessages([]);
                 setPartnerGroupSessionKey(groupId, key);
                 setSessionKey(key);
               }}
-              onCreate={() =>
-                setSessionKey(createPartnerGroupSessionKey(groupId))
-              }
+              onCreate={() => {
+                setGroupMessages([]);
+                setSessionKey(createPartnerGroupSessionKey(groupId));
+              }}
               onTitleChange={setSessionTitle}
             />
           ) : null}
@@ -165,11 +167,11 @@ export default function PartnerGroupPage() {
             type="button"
             onClick={handleDownload}
             disabled={!groupMessages.length}
-            title={t("Download chat history as Markdown")}
-            aria-label={t("Download Markdown")}
-            className="rounded-md p-1.5 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label={t("Download")}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 text-[11px] text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Download className="h-4 w-4" />
+            <Download size={12} />
+            {t("Download")}
           </button>
           <button
             type="button"
