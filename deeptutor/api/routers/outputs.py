@@ -49,6 +49,10 @@ def _resolve_partner_output(relative_path: str) -> Path | None:
     has to search the caller's visible partner workspaces when their own
     workspace misses (#1012).
 
+    The content workspace service writes to ``workspace_root/user/workspace/``
+    while the public outputs root is ``workspace_root/user``, so partner
+    artifact paths may need a ``workspace/`` prefix fallback.
+
     The first-party chat flow already scopes the request to one conversation, so
     the same relative path colliding across multiple partners is vanishingly
     unlikely. Fail closed anyway: only a unique partner match is served.
@@ -62,9 +66,12 @@ def _resolve_partner_output(relative_path: str) -> Path | None:
         partner_id = str(partner.get("partner_id") or "").strip()
         if not partner_id:
             continue
-        candidate = get_path_service_for_scope(
-            partner_scope(partner_id)
-        ).resolve_public_output_path(relative_path)
+        ps = get_path_service_for_scope(partner_scope(partner_id))
+        candidate = ps.resolve_public_output_path(relative_path)
+        if candidate is None:
+            # Try with workspace/ prefix: content workspace binding root is
+            # one level deeper than the public outputs root for partners.
+            candidate = ps.resolve_public_output_path(f"workspace/{relative_path}")
         if candidate is not None:
             matches.append(candidate)
             if len(matches) > 1:
