@@ -200,6 +200,9 @@ class PathService:
         # Generated media (imagegen / videogen tools write under <task>/media/).
         if len(parts) >= 5 and parts[:2] == ("workspace", "chat") and "media" in parts[3:]:
             return candidate
+        # Partner content workspace has binding root one level deeper than public outputs root.
+        if len(parts) >= 5 and parts[:2] == ("workspace", "outputs") and "chat" in parts and "media" in parts[3:]:
+            return candidate
 
         if len(parts) >= 5 and parts[:3] == ("workspace", "chat", "chat") and parts[4] == "exec":
             return candidate
