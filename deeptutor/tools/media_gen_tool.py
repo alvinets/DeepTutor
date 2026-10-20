@@ -142,13 +142,16 @@ class ImagegenTool(BaseTool):
         return ToolDefinition(
             name="imagegen",
             description=(
-                "Generate one or more images from a text description using the "
-                "configured image-generation model. Write a vivid, self-contained "
-                "`prompt` describing the subject, style, and composition. Generated "
-                "images are saved under the active workspace's outputs/. After "
-                "generation, call workspace_present with each returned exact path "
-                "before linking it in Markdown; never invent a path or paste a "
-                "provider URL."
+                "Generate an image from a text description using the configured "
+                "image-generation model. Write a vivid, self-contained `prompt` "
+                "describing the subject, style, and composition.\n\n"
+                "⚠️ REQUIRED WORKFLOW — MUST FOLLOW EXACTLY:\n"
+                "1. Call imagegen with your prompt. It returns an exact "
+                "workspace-relative path (e.g. outputs/chat/.../media/imagegen_xxx/file.png).\n"
+                "2. IMMEDIATELY call workspace_present with that exact path.\n"
+                "3. Use the URL returned by workspace_present in your Markdown link.\n\n"
+                "NEVER invent a path, modify the returned path, or use a relative "
+                "path directly in Markdown — it will 404. NEVER paste a provider URL."
             ),
             parameters=[
                 ToolParameter(
@@ -183,7 +186,9 @@ class ImagegenTool(BaseTool):
             count = int(kwargs.get("n") or 1)
         except (TypeError, ValueError):
             count = 1
-        count = max(1, min(count, 4))
+        # Many providers (OpenAI DALL·E, etc.) only support n=1.
+        # Clamp to 1 to avoid provider 400 errors; generate in a loop if caller wants more.
+        count = 1
 
         try:
             images = await generate_image(prompt, size=size, n=count)
